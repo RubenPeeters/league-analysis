@@ -1,1 +1,2462 @@
-{"meta": {"total_games": 2772, "patch_games": 457, "last_updated": "2025-12-06 15:50 UTC", "current_patch": "15.24"}, "regions": {"kr": {"season": {"TOP": [{"name": "Rumble", "count": 121, "pick_rate": 9.2, "win_rate": 55.4, "ban_rate": 6.3, "kda": 2.26}, {"name": "Ambessa", "count": 116, "pick_rate": 8.8, "win_rate": 40.5, "ban_rate": 28.0, "kda": 1.6}, {"name": "KSante", "count": 110, "pick_rate": 8.4, "win_rate": 44.5, "ban_rate": 1.2, "kda": 1.96}, {"name": "Zaahen", "count": 101, "pick_rate": 7.7, "win_rate": 43.6, "ban_rate": 46.2, "kda": 1.48}, {"name": "Jax", "count": 77, "pick_rate": 5.9, "win_rate": 45.5, "ban_rate": 15.7, "kda": 2.04}, {"name": "Jayce", "count": 74, "pick_rate": 5.6, "win_rate": 50.0, "ban_rate": 20.3, "kda": 1.58}, {"name": "Sion", "count": 66, "pick_rate": 5.0, "win_rate": 51.5, "ban_rate": 0.6, "kda": 2.22}, {"name": "Renekton", "count": 62, "pick_rate": 4.7, "win_rate": 46.8, "ban_rate": 2.9, "kda": 1.84}, {"name": "RekSai", "count": 49, "pick_rate": 3.7, "win_rate": 49.0, "ban_rate": 1.2, "kda": 2.26}, {"name": "Gnar", "count": 40, "pick_rate": 3.0, "win_rate": 32.5, "ban_rate": 1.2, "kda": 1.7}, {"name": "Camille", "count": 37, "pick_rate": 2.8, "win_rate": 48.6, "ban_rate": 0.2, "kda": 1.7}, {"name": "Gwen", "count": 35, "pick_rate": 2.7, "win_rate": 40.0, "ban_rate": 0.9, "kda": 1.55}, {"name": "Darius", "count": 34, "pick_rate": 2.6, "win_rate": 58.8, "ban_rate": 27.7, "kda": 2.64}, {"name": "Aurora", "count": 24, "pick_rate": 1.8, "win_rate": 33.3, "ban_rate": 1.1, "kda": 1.81}, {"name": "Singed", "count": 21, "pick_rate": 1.6, "win_rate": 38.1, "ban_rate": 3.7, "kda": 2.13}], "JUNGLE": [{"name": "Aatrox", "count": 187, "pick_rate": 14.2, "win_rate": 50.3, "ban_rate": 24.9, "kda": 2.67}, {"name": "LeeSin", "count": 143, "pick_rate": 10.9, "win_rate": 53.8, "ban_rate": 18.6, "kda": 3.17}, {"name": "Ambessa", "count": 116, "pick_rate": 8.8, "win_rate": 32.8, "ban_rate": 28.0, "kda": 2.45}, {"name": "Sylas", "count": 87, "pick_rate": 6.6, "win_rate": 40.2, "ban_rate": 17.3, "kda": 2.59}, {"name": "Viego", "count": 62, "pick_rate": 4.7, "win_rate": 50.0, "ban_rate": 0.9, "kda": 2.97}, {"name": "Qiyana", "count": 56, "pick_rate": 4.3, "win_rate": 57.1, "ban_rate": 101.7, "kda": 3.35}, {"name": "Jayce", "count": 55, "pick_rate": 4.2, "win_rate": 40.0, "ban_rate": 20.3, "kda": 2.9}, {"name": "XinZhao", "count": 53, "pick_rate": 4.0, "win_rate": 37.7, "ban_rate": 0.5, "kda": 2.23}, {"name": "Nidalee", "count": 46, "pick_rate": 3.5, "win_rate": 52.2, "ban_rate": 8.7, "kda": 4.59}, {"name": "MasterYi", "count": 42, "pick_rate": 3.2, "win_rate": 61.9, "ban_rate": 18.0, "kda": 2.92}, {"name": "Belveth", "count": 39, "pick_rate": 3.0, "win_rate": 41.0, "ban_rate": 2.5, "kda": 2.97}, {"name": "Hecarim", "count": 35, "pick_rate": 2.7, "win_rate": 40.0, "ban_rate": 18.5, "kda": 3.21}, {"name": "JarvanIV", "count": 31, "pick_rate": 2.4, "win_rate": 48.4, "ban_rate": 0.8, "kda": 3.74}, {"name": "Vi", "count": 24, "pick_rate": 1.8, "win_rate": 41.7, "ban_rate": 0.2, "kda": 2.89}, {"name": "Talon", "count": 22, "pick_rate": 1.7, "win_rate": 31.8, "ban_rate": 4.3, "kda": 2.38}], "MIDDLE": [{"name": "Orianna", "count": 132, "pick_rate": 10.0, "win_rate": 46.2, "ban_rate": 34.4, "kda": 2.85}, {"name": "Ryze", "count": 101, "pick_rate": 7.7, "win_rate": 48.5, "ban_rate": 2.4, "kda": 2.37}, {"name": "Syndra", "count": 81, "pick_rate": 6.2, "win_rate": 45.7, "ban_rate": 7.8, "kda": 2.38}, {"name": "Taliyah", "count": 61, "pick_rate": 4.6, "win_rate": 57.4, "ban_rate": 1.5, "kda": 2.8}, {"name": "Yone", "count": 56, "pick_rate": 4.3, "win_rate": 39.3, "ban_rate": 0.7, "kda": 1.87}, {"name": "Azir", "count": 54, "pick_rate": 4.1, "win_rate": 40.7, "ban_rate": 4.4, "kda": 2.11}, {"name": "Kayle", "count": 52, "pick_rate": 4.0, "win_rate": 61.5, "ban_rate": 14.7, "kda": 3.12}, {"name": "Aurora", "count": 48, "pick_rate": 3.7, "win_rate": 47.9, "ban_rate": 1.1, "kda": 3.0}, {"name": "Viktor", "count": 49, "pick_rate": 3.7, "win_rate": 46.9, "ban_rate": 1.0, "kda": 2.35}, {"name": "Mel", "count": 45, "pick_rate": 3.4, "win_rate": 40.0, "ban_rate": 15.4, "kda": 2.45}, {"name": "Akali", "count": 45, "pick_rate": 3.4, "win_rate": 55.6, "ban_rate": 1.6, "kda": 2.7}, {"name": "Akshan", "count": 43, "pick_rate": 3.3, "win_rate": 44.2, "ban_rate": 17.6, "kda": 3.6}, {"name": "Galio", "count": 41, "pick_rate": 3.1, "win_rate": 36.6, "ban_rate": 1.0, "kda": 2.37}, {"name": "TwistedFate", "count": 38, "pick_rate": 2.9, "win_rate": 50.0, "ban_rate": 1.7, "kda": 2.94}, {"name": "Sylas", "count": 37, "pick_rate": 2.8, "win_rate": 43.2, "ban_rate": 17.3, "kda": 2.37}], "BOTTOM": [{"name": "Yunara", "count": 171, "pick_rate": 13.0, "win_rate": 46.2, "ban_rate": 10.5, "kda": 2.22}, {"name": "Kaisa", "count": 152, "pick_rate": 11.6, "win_rate": 48.7, "ban_rate": 5.5, "kda": 2.54}, {"name": "Ezreal", "count": 135, "pick_rate": 10.3, "win_rate": 48.9, "ban_rate": 4.9, "kda": 2.65}, {"name": "Lucian", "count": 86, "pick_rate": 6.5, "win_rate": 44.2, "ban_rate": 4.6, "kda": 2.32}, {"name": "Jhin", "count": 72, "pick_rate": 5.5, "win_rate": 43.1, "ban_rate": 1.2, "kda": 2.77}, {"name": "MissFortune", "count": 62, "pick_rate": 4.7, "win_rate": 53.2, "ban_rate": 3.3, "kda": 2.77}, {"name": "Tristana", "count": 62, "pick_rate": 4.7, "win_rate": 54.8, "ban_rate": 3.1, "kda": 2.34}, {"name": "Aphelios", "count": 55, "pick_rate": 4.2, "win_rate": 47.3, "ban_rate": 0.4, "kda": 1.89}, {"name": "Zeri", "count": 47, "pick_rate": 3.6, "win_rate": 42.6, "ban_rate": 0.4, "kda": 2.49}, {"name": "Ziggs", "count": 45, "pick_rate": 3.4, "win_rate": 42.2, "ban_rate": 0.8, "kda": 2.31}, {"name": "Mel", "count": 44, "pick_rate": 3.3, "win_rate": 36.4, "ban_rate": 15.4, "kda": 2.11}, {"name": "Corki", "count": 43, "pick_rate": 3.3, "win_rate": 39.5, "ban_rate": 0.3, "kda": 2.25}, {"name": "Ashe", "count": 44, "pick_rate": 3.3, "win_rate": 52.3, "ban_rate": 2.4, "kda": 2.42}, {"name": "Varus", "count": 39, "pick_rate": 3.0, "win_rate": 28.2, "ban_rate": 0.8, "kda": 2.03}, {"name": "Sivir", "count": 38, "pick_rate": 2.9, "win_rate": 42.1, "ban_rate": 3.3, "kda": 2.48}], "UTILITY": [{"name": "Alistar", "count": 127, "pick_rate": 9.7, "win_rate": 46.5, "ban_rate": 1.8, "kda": 2.67}, {"name": "Poppy", "count": 109, "pick_rate": 8.3, "win_rate": 55.0, "ban_rate": 36.0, "kda": 2.72}, {"name": "Rakan", "count": 97, "pick_rate": 7.4, "win_rate": 36.1, "ban_rate": 0.8, "kda": 2.74}, {"name": "Neeko", "count": 97, "pick_rate": 7.4, "win_rate": 41.2, "ban_rate": 9.0, "kda": 2.11}, {"name": "Nautilus", "count": 93, "pick_rate": 7.1, "win_rate": 49.5, "ban_rate": 2.9, "kda": 2.33}, {"name": "Braum", "count": 78, "pick_rate": 5.9, "win_rate": 48.7, "ban_rate": 2.8, "kda": 2.54}, {"name": "Bard", "count": 76, "pick_rate": 5.8, "win_rate": 52.6, "ban_rate": 3.4, "kda": 3.02}, {"name": "Pyke", "count": 75, "pick_rate": 5.7, "win_rate": 44.0, "ban_rate": 42.5, "kda": 2.26}, {"name": "Leona", "count": 75, "pick_rate": 5.7, "win_rate": 40.0, "ban_rate": 0.6, "kda": 2.17}, {"name": "Lulu", "count": 62, "pick_rate": 4.7, "win_rate": 46.8, "ban_rate": 0.9, "kda": 3.35}, {"name": "Rell", "count": 51, "pick_rate": 3.9, "win_rate": 41.2, "ban_rate": 0.8, "kda": 2.64}, {"name": "Blitzcrank", "count": 43, "pick_rate": 3.3, "win_rate": 41.9, "ban_rate": 1.0, "kda": 2.3}, {"name": "Karma", "count": 40, "pick_rate": 3.0, "win_rate": 55.0, "ban_rate": 1.4, "kda": 3.07}, {"name": "Pantheon", "count": 35, "pick_rate": 2.7, "win_rate": 28.6, "ban_rate": 2.4, "kda": 1.85}, {"name": "Elise", "count": 27, "pick_rate": 2.1, "win_rate": 51.9, "ban_rate": 10.0, "kda": 2.45}]}, "patch": {"TOP": [{"name": "Ambessa", "count": 36, "pick_rate": 11.7, "win_rate": 38.9, "ban_rate": 19.7, "kda": 1.59}, {"name": "Zaahen", "count": 30, "pick_rate": 9.7, "win_rate": 40.0, "ban_rate": 52.4, "kda": 1.34}, {"name": "Rumble", "count": 26, "pick_rate": 8.4, "win_rate": 61.5, "ban_rate": 6.8, "kda": 2.17}, {"name": "KSante", "count": 24, "pick_rate": 7.8, "win_rate": 41.7, "ban_rate": 1.0, "kda": 1.92}, {"name": "Jayce", "count": 21, "pick_rate": 6.8, "win_rate": 47.6, "ban_rate": 26.9, "kda": 1.53}, {"name": "Sion", "count": 17, "pick_rate": 5.5, "win_rate": 47.1, "ban_rate": 0.3, "kda": 2.04}, {"name": "Jax", "count": 11, "pick_rate": 3.6, "win_rate": 45.5, "ban_rate": 9.4, "kda": 1.73}, {"name": "Darius", "count": 11, "pick_rate": 3.6, "win_rate": 45.5, "ban_rate": 31.7, "kda": 3.19}, {"name": "Gnar", "count": 11, "pick_rate": 3.6, "win_rate": 27.3, "ban_rate": 1.6, "kda": 1.34}, {"name": "Gwen", "count": 8, "pick_rate": 2.6, "win_rate": 37.5, "ban_rate": 1.3, "kda": 1.21}, {"name": "Renekton", "count": 8, "pick_rate": 2.6, "win_rate": 50.0, "ban_rate": 3.6, "kda": 1.73}, {"name": "Aurora", "count": 7, "pick_rate": 2.3, "win_rate": 42.9, "ban_rate": 1.0, "kda": 2.1}, {"name": "RekSai", "count": 6, "pick_rate": 1.9, "win_rate": 33.3, "ban_rate": 1.6, "kda": 3.37}, {"name": "Malphite", "count": 6, "pick_rate": 1.9, "win_rate": 50.0, "ban_rate": 1.3, "kda": 2.4}, {"name": "Camille", "count": 6, "pick_rate": 1.9, "win_rate": 33.3, "ban_rate": 0.0, "kda": 1.76}], "JUNGLE": [{"name": "Aatrox", "count": 59, "pick_rate": 19.1, "win_rate": 52.5, "ban_rate": 40.5, "kda": 2.77}, {"name": "Ambessa", "count": 38, "pick_rate": 12.3, "win_rate": 34.2, "ban_rate": 19.7, "kda": 2.93}, {"name": "LeeSin", "count": 25, "pick_rate": 8.1, "win_rate": 48.0, "ban_rate": 11.0, "kda": 3.59}, {"name": "Qiyana", "count": 18, "pick_rate": 5.8, "win_rate": 55.6, "ban_rate": 94.2, "kda": 3.02}, {"name": "Sylas", "count": 17, "pick_rate": 5.5, "win_rate": 35.3, "ban_rate": 13.9, "kda": 2.03}, {"name": "Jayce", "count": 15, "pick_rate": 4.9, "win_rate": 40.0, "ban_rate": 26.9, "kda": 3.21}, {"name": "Belveth", "count": 14, "pick_rate": 4.5, "win_rate": 57.1, "ban_rate": 1.6, "kda": 3.94}, {"name": "MasterYi", "count": 12, "pick_rate": 3.9, "win_rate": 58.3, "ban_rate": 13.6, "kda": 3.58}, {"name": "Nidalee", "count": 10, "pick_rate": 3.2, "win_rate": 60.0, "ban_rate": 5.5, "kda": 4.95}, {"name": "Talon", "count": 9, "pick_rate": 2.9, "win_rate": 33.3, "ban_rate": 3.2, "kda": 2.49}, {"name": "Viego", "count": 8, "pick_rate": 2.6, "win_rate": 62.5, "ban_rate": 0.0, "kda": 2.21}, {"name": "XinZhao", "count": 8, "pick_rate": 2.6, "win_rate": 25.0, "ban_rate": 1.0, "kda": 2.35}, {"name": "Karthus", "count": 8, "pick_rate": 2.6, "win_rate": 37.5, "ban_rate": 14.6, "kda": 1.66}, {"name": "Zaahen", "count": 8, "pick_rate": 2.6, "win_rate": 12.5, "ban_rate": 52.4, "kda": 2.04}, {"name": "FiddleSticks", "count": 7, "pick_rate": 2.3, "win_rate": 57.1, "ban_rate": 6.5, "kda": 2.38}], "MIDDLE": [{"name": "Viktor", "count": 28, "pick_rate": 9.1, "win_rate": 42.9, "ban_rate": 2.9, "kda": 2.34}, {"name": "Orianna", "count": 24, "pick_rate": 7.8, "win_rate": 45.8, "ban_rate": 39.8, "kda": 2.53}, {"name": "Taliyah", "count": 20, "pick_rate": 6.5, "win_rate": 50.0, "ban_rate": 2.3, "kda": 2.42}, {"name": "Kayle", "count": 19, "pick_rate": 6.1, "win_rate": 42.1, "ban_rate": 14.6, "kda": 3.28}, {"name": "Aurora", "count": 11, "pick_rate": 3.6, "win_rate": 45.5, "ban_rate": 1.0, "kda": 3.37}, {"name": "Ryze", "count": 11, "pick_rate": 3.6, "win_rate": 27.3, "ban_rate": 2.3, "kda": 1.73}, {"name": "Yone", "count": 11, "pick_rate": 3.6, "win_rate": 36.4, "ban_rate": 1.9, "kda": 1.71}, {"name": "Mel", "count": 10, "pick_rate": 3.2, "win_rate": 60.0, "ban_rate": 13.6, "kda": 3.02}, {"name": "Azir", "count": 10, "pick_rate": 3.2, "win_rate": 50.0, "ban_rate": 4.2, "kda": 2.58}, {"name": "Galio", "count": 9, "pick_rate": 2.9, "win_rate": 66.7, "ban_rate": 1.0, "kda": 2.67}, {"name": "Hwei", "count": 9, "pick_rate": 2.9, "win_rate": 55.6, "ban_rate": 0.3, "kda": 2.89}, {"name": "Syndra", "count": 9, "pick_rate": 2.9, "win_rate": 22.2, "ban_rate": 10.7, "kda": 2.02}, {"name": "Ahri", "count": 8, "pick_rate": 2.6, "win_rate": 50.0, "ban_rate": 0.0, "kda": 3.97}, {"name": "Akali", "count": 8, "pick_rate": 2.6, "win_rate": 62.5, "ban_rate": 2.9, "kda": 2.92}, {"name": "Leblanc", "count": 8, "pick_rate": 2.6, "win_rate": 37.5, "ban_rate": 23.0, "kda": 2.41}], "BOTTOM": [{"name": "Yunara", "count": 49, "pick_rate": 15.9, "win_rate": 49.0, "ban_rate": 15.2, "kda": 2.46}, {"name": "Ezreal", "count": 30, "pick_rate": 9.7, "win_rate": 40.0, "ban_rate": 2.6, "kda": 1.97}, {"name": "Kaisa", "count": 25, "pick_rate": 8.1, "win_rate": 56.0, "ban_rate": 1.6, "kda": 2.72}, {"name": "Lucian", "count": 20, "pick_rate": 6.5, "win_rate": 20.0, "ban_rate": 3.2, "kda": 1.63}, {"name": "MissFortune", "count": 19, "pick_rate": 6.1, "win_rate": 47.4, "ban_rate": 8.4, "kda": 2.13}, {"name": "Jhin", "count": 18, "pick_rate": 5.8, "win_rate": 50.0, "ban_rate": 1.9, "kda": 2.89}, {"name": "Aphelios", "count": 17, "pick_rate": 5.5, "win_rate": 47.1, "ban_rate": 0.3, "kda": 1.86}, {"name": "Zeri", "count": 17, "pick_rate": 5.5, "win_rate": 29.4, "ban_rate": 0.3, "kda": 1.66}, {"name": "Sivir", "count": 12, "pick_rate": 3.9, "win_rate": 33.3, "ban_rate": 2.6, "kda": 2.06}, {"name": "Tristana", "count": 12, "pick_rate": 3.9, "win_rate": 50.0, "ban_rate": 2.6, "kda": 2.26}, {"name": "Corki", "count": 11, "pick_rate": 3.6, "win_rate": 63.6, "ban_rate": 0.0, "kda": 3.04}, {"name": "Ashe", "count": 11, "pick_rate": 3.6, "win_rate": 54.5, "ban_rate": 1.9, "kda": 2.32}, {"name": "Mel", "count": 7, "pick_rate": 2.3, "win_rate": 42.9, "ban_rate": 13.6, "kda": 2.14}, {"name": "Ziggs", "count": 6, "pick_rate": 1.9, "win_rate": 50.0, "ban_rate": 0.0, "kda": 1.85}, {"name": "Smolder", "count": 6, "pick_rate": 1.9, "win_rate": 50.0, "ban_rate": 0.0, "kda": 2.32}], "UTILITY": [{"name": "Alistar", "count": 28, "pick_rate": 9.1, "win_rate": 60.7, "ban_rate": 2.6, "kda": 2.87}, {"name": "Neeko", "count": 24, "pick_rate": 7.8, "win_rate": 37.5, "ban_rate": 8.7, "kda": 2.01}, {"name": "Pyke", "count": 23, "pick_rate": 7.4, "win_rate": 52.2, "ban_rate": 45.0, "kda": 2.48}, {"name": "Bard", "count": 22, "pick_rate": 7.1, "win_rate": 45.5, "ban_rate": 4.2, "kda": 2.77}, {"name": "Leona", "count": 22, "pick_rate": 7.1, "win_rate": 45.5, "ban_rate": 0.3, "kda": 2.27}, {"name": "Poppy", "count": 21, "pick_rate": 6.8, "win_rate": 57.1, "ban_rate": 31.4, "kda": 3.22}, {"name": "Nautilus", "count": 19, "pick_rate": 6.1, "win_rate": 47.4, "ban_rate": 3.2, "kda": 2.47}, {"name": "Rakan", "count": 19, "pick_rate": 6.1, "win_rate": 21.1, "ban_rate": 1.6, "kda": 2.06}, {"name": "Braum", "count": 17, "pick_rate": 5.5, "win_rate": 41.2, "ban_rate": 4.5, "kda": 2.16}, {"name": "Lulu", "count": 15, "pick_rate": 4.9, "win_rate": 53.3, "ban_rate": 0.3, "kda": 3.24}, {"name": "Blitzcrank", "count": 13, "pick_rate": 4.2, "win_rate": 23.1, "ban_rate": 1.0, "kda": 1.64}, {"name": "Rell", "count": 11, "pick_rate": 3.6, "win_rate": 45.5, "ban_rate": 1.0, "kda": 2.96}, {"name": "Elise", "count": 11, "pick_rate": 3.6, "win_rate": 54.5, "ban_rate": 9.7, "kda": 2.48}, {"name": "Seraphine", "count": 10, "pick_rate": 3.2, "win_rate": 40.0, "ban_rate": 1.0, "kda": 2.38}, {"name": "Pantheon", "count": 7, "pick_rate": 2.3, "win_rate": 42.9, "ban_rate": 3.9, "kda": 2.3}]}}, "euw1": {"season": {"TOP": [{"name": "Ambessa", "count": 91, "pick_rate": 6.2, "win_rate": 53.8, "ban_rate": 34.8, "kda": 2.02}, {"name": "KSante", "count": 71, "pick_rate": 4.9, "win_rate": 42.3, "ban_rate": 7.0, "kda": 2.1}, {"name": "Rumble", "count": 68, "pick_rate": 4.7, "win_rate": 39.7, "ban_rate": 4.8, "kda": 1.99}, {"name": "Zaahen", "count": 66, "pick_rate": 4.5, "win_rate": 47.0, "ban_rate": 39.7, "kda": 1.88}, {"name": "Fiora", "count": 65, "pick_rate": 4.5, "win_rate": 61.5, "ban_rate": 8.6, "kda": 1.87}, {"name": "Aatrox", "count": 63, "pick_rate": 4.3, "win_rate": 42.9, "ban_rate": 6.0, "kda": 1.87}, {"name": "Sion", "count": 58, "pick_rate": 4.0, "win_rate": 43.1, "ban_rate": 2.3, "kda": 1.85}, {"name": "Renekton", "count": 54, "pick_rate": 3.7, "win_rate": 55.6, "ban_rate": 7.1, "kda": 2.01}, {"name": "Irelia", "count": 52, "pick_rate": 3.6, "win_rate": 51.9, "ban_rate": 7.4, "kda": 1.37}, {"name": "Gwen", "count": 49, "pick_rate": 3.4, "win_rate": 53.1, "ban_rate": 2.2, "kda": 1.74}, {"name": "Jayce", "count": 50, "pick_rate": 3.4, "win_rate": 46.0, "ban_rate": 16.1, "kda": 1.53}, {"name": "Jax", "count": 47, "pick_rate": 3.2, "win_rate": 46.8, "ban_rate": 10.8, "kda": 1.73}, {"name": "Riven", "count": 45, "pick_rate": 3.1, "win_rate": 42.2, "ban_rate": 16.0, "kda": 1.97}, {"name": "Gangplank", "count": 41, "pick_rate": 2.8, "win_rate": 48.8, "ban_rate": 1.0, "kda": 2.3}, {"name": "Vayne", "count": 41, "pick_rate": 2.8, "win_rate": 53.7, "ban_rate": 6.3, "kda": 1.39}], "JUNGLE": [{"name": "Sylas", "count": 101, "pick_rate": 6.9, "win_rate": 52.5, "ban_rate": 24.2, "kda": 2.88}, {"name": "Diana", "count": 98, "pick_rate": 6.7, "win_rate": 55.1, "ban_rate": 4.8, "kda": 3.19}, {"name": "JarvanIV", "count": 86, "pick_rate": 5.9, "win_rate": 59.3, "ban_rate": 5.2, "kda": 3.97}, {"name": "Viego", "count": 70, "pick_rate": 4.8, "win_rate": 57.1, "ban_rate": 5.4, "kda": 3.33}, {"name": "Nidalee", "count": 70, "pick_rate": 4.8, "win_rate": 54.3, "ban_rate": 5.9, "kda": 3.36}, {"name": "Qiyana", "count": 69, "pick_rate": 4.7, "win_rate": 53.6, "ban_rate": 85.4, "kda": 3.01}, {"name": "LeeSin", "count": 66, "pick_rate": 4.5, "win_rate": 48.5, "ban_rate": 8.3, "kda": 2.94}, {"name": "Ambessa", "count": 65, "pick_rate": 4.5, "win_rate": 46.2, "ban_rate": 34.8, "kda": 2.42}, {"name": "Aatrox", "count": 66, "pick_rate": 4.5, "win_rate": 54.5, "ban_rate": 6.0, "kda": 3.0}, {"name": "Zed", "count": 58, "pick_rate": 4.0, "win_rate": 50.0, "ban_rate": 29.0, "kda": 3.03}, {"name": "Talon", "count": 48, "pick_rate": 3.3, "win_rate": 50.0, "ban_rate": 54.6, "kda": 3.22}, {"name": "Khazix", "count": 42, "pick_rate": 2.9, "win_rate": 50.0, "ban_rate": 2.7, "kda": 2.93}, {"name": "Graves", "count": 39, "pick_rate": 2.7, "win_rate": 38.5, "ban_rate": 1.8, "kda": 2.24}, {"name": "Chogath", "count": 38, "pick_rate": 2.6, "win_rate": 42.1, "ban_rate": 2.3, "kda": 2.21}, {"name": "Karthus", "count": 38, "pick_rate": 2.6, "win_rate": 60.5, "ban_rate": 6.4, "kda": 2.59}], "MIDDLE": [{"name": "Syndra", "count": 105, "pick_rate": 7.2, "win_rate": 47.6, "ban_rate": 18.4, "kda": 2.59}, {"name": "Orianna", "count": 90, "pick_rate": 6.2, "win_rate": 43.3, "ban_rate": 5.5, "kda": 2.53}, {"name": "Taliyah", "count": 79, "pick_rate": 5.4, "win_rate": 51.9, "ban_rate": 5.9, "kda": 2.62}, {"name": "Akali", "count": 77, "pick_rate": 5.3, "win_rate": 48.1, "ban_rate": 16.1, "kda": 2.36}, {"name": "Ahri", "count": 76, "pick_rate": 5.2, "win_rate": 52.6, "ban_rate": 1.2, "kda": 3.24}, {"name": "Yone", "count": 51, "pick_rate": 3.5, "win_rate": 43.1, "ban_rate": 0.6, "kda": 1.86}, {"name": "Ryze", "count": 47, "pick_rate": 3.2, "win_rate": 53.2, "ban_rate": 14.9, "kda": 2.52}, {"name": "Malzahar", "count": 42, "pick_rate": 2.9, "win_rate": 52.4, "ban_rate": 2.9, "kda": 2.65}, {"name": "Mel", "count": 42, "pick_rate": 2.9, "win_rate": 42.9, "ban_rate": 31.4, "kda": 2.63}, {"name": "Ekko", "count": 41, "pick_rate": 2.8, "win_rate": 36.6, "ban_rate": 6.0, "kda": 2.34}, {"name": "Viktor", "count": 40, "pick_rate": 2.7, "win_rate": 45.0, "ban_rate": 0.5, "kda": 2.4}, {"name": "Quinn", "count": 37, "pick_rate": 2.5, "win_rate": 45.9, "ban_rate": 11.1, "kda": 2.44}, {"name": "Irelia", "count": 35, "pick_rate": 2.4, "win_rate": 54.3, "ban_rate": 7.4, "kda": 1.62}, {"name": "Zoe", "count": 33, "pick_rate": 2.3, "win_rate": 60.6, "ban_rate": 2.3, "kda": 2.77}, {"name": "Hwei", "count": 32, "pick_rate": 2.2, "win_rate": 31.2, "ban_rate": 0.8, "kda": 2.26}], "BOTTOM": [{"name": "Kaisa", "count": 201, "pick_rate": 13.8, "win_rate": 49.3, "ban_rate": 7.3, "kda": 2.59}, {"name": "Yunara", "count": 149, "pick_rate": 10.2, "win_rate": 51.7, "ban_rate": 17.9, "kda": 2.56}, {"name": "Jhin", "count": 123, "pick_rate": 8.4, "win_rate": 42.3, "ban_rate": 0.1, "kda": 2.94}, {"name": "Ezreal", "count": 87, "pick_rate": 6.0, "win_rate": 48.3, "ban_rate": 2.2, "kda": 2.87}, {"name": "MissFortune", "count": 81, "pick_rate": 5.6, "win_rate": 42.0, "ban_rate": 4.6, "kda": 2.22}, {"name": "Caitlyn", "count": 77, "pick_rate": 5.3, "win_rate": 50.6, "ban_rate": 3.0, "kda": 2.26}, {"name": "Tristana", "count": 69, "pick_rate": 4.7, "win_rate": 46.4, "ban_rate": 2.1, "kda": 2.44}, {"name": "Ashe", "count": 60, "pick_rate": 4.1, "win_rate": 41.7, "ban_rate": 0.5, "kda": 2.42}, {"name": "Corki", "count": 49, "pick_rate": 3.4, "win_rate": 57.1, "ban_rate": 1.7, "kda": 2.66}, {"name": "Mel", "count": 46, "pick_rate": 3.2, "win_rate": 41.3, "ban_rate": 31.4, "kda": 3.25}, {"name": "Smolder", "count": 44, "pick_rate": 3.0, "win_rate": 54.5, "ban_rate": 2.6, "kda": 2.34}, {"name": "Sivir", "count": 43, "pick_rate": 3.0, "win_rate": 67.4, "ban_rate": 1.5, "kda": 3.4}, {"name": "Aphelios", "count": 40, "pick_rate": 2.7, "win_rate": 47.5, "ban_rate": 0.3, "kda": 1.87}, {"name": "Lucian", "count": 36, "pick_rate": 2.5, "win_rate": 44.4, "ban_rate": 0.3, "kda": 2.19}, {"name": "Ziggs", "count": 30, "pick_rate": 2.1, "win_rate": 56.7, "ban_rate": 0.8, "kda": 3.08}], "UTILITY": [{"name": "Nautilus", "count": 153, "pick_rate": 10.5, "win_rate": 49.0, "ban_rate": 4.4, "kda": 2.22}, {"name": "Alistar", "count": 122, "pick_rate": 8.4, "win_rate": 43.4, "ban_rate": 1.6, "kda": 2.41}, {"name": "Rell", "count": 114, "pick_rate": 7.8, "win_rate": 50.9, "ban_rate": 2.7, "kda": 3.25}, {"name": "Bard", "count": 110, "pick_rate": 7.5, "win_rate": 52.7, "ban_rate": 53.3, "kda": 3.21}, {"name": "Karma", "count": 77, "pick_rate": 5.3, "win_rate": 45.5, "ban_rate": 4.6, "kda": 3.15}, {"name": "Rakan", "count": 72, "pick_rate": 4.9, "win_rate": 54.2, "ban_rate": 1.1, "kda": 3.48}, {"name": "Pyke", "count": 70, "pick_rate": 4.8, "win_rate": 57.1, "ban_rate": 45.8, "kda": 2.45}, {"name": "Janna", "count": 64, "pick_rate": 4.4, "win_rate": 51.6, "ban_rate": 10.7, "kda": 4.31}, {"name": "Leona", "count": 62, "pick_rate": 4.3, "win_rate": 59.7, "ban_rate": 1.2, "kda": 2.34}, {"name": "Neeko", "count": 59, "pick_rate": 4.0, "win_rate": 39.0, "ban_rate": 2.7, "kda": 2.28}, {"name": "Poppy", "count": 57, "pick_rate": 3.9, "win_rate": 61.4, "ban_rate": 15.7, "kda": 2.94}, {"name": "Braum", "count": 49, "pick_rate": 3.4, "win_rate": 46.9, "ban_rate": 2.7, "kda": 2.72}, {"name": "Elise", "count": 42, "pick_rate": 2.9, "win_rate": 69.0, "ban_rate": 4.3, "kda": 2.83}, {"name": "Blitzcrank", "count": 36, "pick_rate": 2.5, "win_rate": 47.2, "ban_rate": 2.7, "kda": 2.71}, {"name": "Thresh", "count": 30, "pick_rate": 2.1, "win_rate": 43.3, "ban_rate": 0.4, "kda": 2.23}]}, "patch": {"TOP": [{"name": "KSante", "count": 10, "pick_rate": 6.8, "win_rate": 70.0, "ban_rate": 7.4, "kda": 3.56}, {"name": "Zaahen", "count": 8, "pick_rate": 5.4, "win_rate": 25.0, "ban_rate": 64.9, "kda": 1.0}, {"name": "Ambessa", "count": 8, "pick_rate": 5.4, "win_rate": 75.0, "ban_rate": 41.2, "kda": 2.34}, {"name": "Sion", "count": 7, "pick_rate": 4.7, "win_rate": 28.6, "ban_rate": 2.0, "kda": 1.04}, {"name": "Jax", "count": 7, "pick_rate": 4.7, "win_rate": 28.6, "ban_rate": 13.5, "kda": 1.66}, {"name": "Fiora", "count": 6, "pick_rate": 4.1, "win_rate": 50.0, "ban_rate": 8.1, "kda": 1.8}, {"name": "Gangplank", "count": 5, "pick_rate": 3.4, "win_rate": 60.0, "ban_rate": 0.7, "kda": 1.7}, {"name": "Rumble", "count": 5, "pick_rate": 3.4, "win_rate": 60.0, "ban_rate": 11.5, "kda": 1.58}, {"name": "Urgot", "count": 5, "pick_rate": 3.4, "win_rate": 40.0, "ban_rate": 0.7, "kda": 1.9}, {"name": "Vayne", "count": 5, "pick_rate": 3.4, "win_rate": 80.0, "ban_rate": 6.1, "kda": 2.11}, {"name": "Jayce", "count": 5, "pick_rate": 3.4, "win_rate": 100.0, "ban_rate": 7.4, "kda": 2.79}, {"name": "Riven", "count": 5, "pick_rate": 3.4, "win_rate": 60.0, "ban_rate": 12.2, "kda": 2.17}, {"name": "Renekton", "count": 4, "pick_rate": 2.7, "win_rate": 50.0, "ban_rate": 4.1, "kda": 1.52}, {"name": "Camille", "count": 4, "pick_rate": 2.7, "win_rate": 50.0, "ban_rate": 0.0, "kda": 2.09}, {"name": "Varus", "count": 4, "pick_rate": 2.7, "win_rate": 75.0, "ban_rate": 1.4, "kda": 2.39}], "JUNGLE": [{"name": "Nidalee", "count": 15, "pick_rate": 10.1, "win_rate": 46.7, "ban_rate": 8.1, "kda": 2.41}, {"name": "Sylas", "count": 12, "pick_rate": 8.1, "win_rate": 50.0, "ban_rate": 31.1, "kda": 2.95}, {"name": "JarvanIV", "count": 12, "pick_rate": 8.1, "win_rate": 66.7, "ban_rate": 2.0, "kda": 4.88}, {"name": "Aatrox", "count": 10, "pick_rate": 6.8, "win_rate": 50.0, "ban_rate": 12.2, "kda": 2.64}, {"name": "Hecarim", "count": 8, "pick_rate": 5.4, "win_rate": 37.5, "ban_rate": 0.0, "kda": 2.57}, {"name": "Viego", "count": 8, "pick_rate": 5.4, "win_rate": 37.5, "ban_rate": 0.0, "kda": 2.81}, {"name": "Diana", "count": 8, "pick_rate": 5.4, "win_rate": 37.5, "ban_rate": 6.8, "kda": 2.21}, {"name": "Ambessa", "count": 7, "pick_rate": 4.7, "win_rate": 42.9, "ban_rate": 41.2, "kda": 3.35}, {"name": "Qiyana", "count": 6, "pick_rate": 4.1, "win_rate": 83.3, "ban_rate": 80.4, "kda": 2.95}, {"name": "LeeSin", "count": 5, "pick_rate": 3.4, "win_rate": 60.0, "ban_rate": 4.1, "kda": 5.33}, {"name": "Talon", "count": 5, "pick_rate": 3.4, "win_rate": 60.0, "ban_rate": 41.9, "kda": 7.5}, {"name": "DrMundo", "count": 4, "pick_rate": 2.7, "win_rate": 75.0, "ban_rate": 0.0, "kda": 4.15}, {"name": "Vi", "count": 4, "pick_rate": 2.7, "win_rate": 25.0, "ban_rate": 0.7, "kda": 2.85}, {"name": "Chogath", "count": 4, "pick_rate": 2.7, "win_rate": 25.0, "ban_rate": 1.4, "kda": 1.39}, {"name": "Ekko", "count": 3, "pick_rate": 2.0, "win_rate": 66.7, "ban_rate": 3.4, "kda": 3.17}], "MIDDLE": [{"name": "Ahri", "count": 9, "pick_rate": 6.1, "win_rate": 33.3, "ban_rate": 3.4, "kda": 4.3}, {"name": "Taliyah", "count": 8, "pick_rate": 5.4, "win_rate": 50.0, "ban_rate": 3.4, "kda": 3.15}, {"name": "Akali", "count": 8, "pick_rate": 5.4, "win_rate": 62.5, "ban_rate": 22.3, "kda": 3.78}, {"name": "Malzahar", "count": 8, "pick_rate": 5.4, "win_rate": 62.5, "ban_rate": 4.1, "kda": 2.73}, {"name": "Orianna", "count": 6, "pick_rate": 4.1, "win_rate": 66.7, "ban_rate": 5.4, "kda": 3.04}, {"name": "Yone", "count": 6, "pick_rate": 4.1, "win_rate": 33.3, "ban_rate": 2.0, "kda": 1.49}, {"name": "Zed", "count": 6, "pick_rate": 4.1, "win_rate": 33.3, "ban_rate": 16.2, "kda": 2.84}, {"name": "Zoe", "count": 6, "pick_rate": 4.1, "win_rate": 66.7, "ban_rate": 3.4, "kda": 3.61}, {"name": "Ekko", "count": 4, "pick_rate": 2.7, "win_rate": 75.0, "ban_rate": 3.4, "kda": 6.8}, {"name": "Quinn", "count": 4, "pick_rate": 2.7, "win_rate": 25.0, "ban_rate": 16.2, "kda": 1.43}, {"name": "Talon", "count": 4, "pick_rate": 2.7, "win_rate": 100.0, "ban_rate": 41.9, "kda": 4.43}, {"name": "Jayce", "count": 4, "pick_rate": 2.7, "win_rate": 75.0, "ban_rate": 7.4, "kda": 3.2}, {"name": "Irelia", "count": 4, "pick_rate": 2.7, "win_rate": 75.0, "ban_rate": 9.5, "kda": 1.81}, {"name": "Sylas", "count": 3, "pick_rate": 2.0, "win_rate": 33.3, "ban_rate": 31.1, "kda": 1.68}, {"name": "Cassiopeia", "count": 3, "pick_rate": 2.0, "win_rate": 66.7, "ban_rate": 2.7, "kda": 2.88}], "BOTTOM": [{"name": "Kaisa", "count": 18, "pick_rate": 12.2, "win_rate": 50.0, "ban_rate": 6.1, "kda": 2.53}, {"name": "MissFortune", "count": 12, "pick_rate": 8.1, "win_rate": 58.3, "ban_rate": 20.9, "kda": 2.3}, {"name": "Caitlyn", "count": 12, "pick_rate": 8.1, "win_rate": 58.3, "ban_rate": 0.7, "kda": 2.72}, {"name": "Yunara", "count": 11, "pick_rate": 7.4, "win_rate": 36.4, "ban_rate": 7.4, "kda": 1.97}, {"name": "Corki", "count": 9, "pick_rate": 6.1, "win_rate": 44.4, "ban_rate": 1.4, "kda": 1.86}, {"name": "Jhin", "count": 8, "pick_rate": 5.4, "win_rate": 50.0, "ban_rate": 0.0, "kda": 3.77}, {"name": "Aphelios", "count": 6, "pick_rate": 4.1, "win_rate": 66.7, "ban_rate": 0.0, "kda": 2.55}, {"name": "Mel", "count": 6, "pick_rate": 4.1, "win_rate": 50.0, "ban_rate": 48.0, "kda": 4.84}, {"name": "Tristana", "count": 6, "pick_rate": 4.1, "win_rate": 66.7, "ban_rate": 2.0, "kda": 3.76}, {"name": "Swain", "count": 6, "pick_rate": 4.1, "win_rate": 66.7, "ban_rate": 0.0, "kda": 4.76}, {"name": "Ezreal", "count": 5, "pick_rate": 3.4, "win_rate": 0.0, "ban_rate": 3.4, "kda": 1.52}, {"name": "Ashe", "count": 5, "pick_rate": 3.4, "win_rate": 60.0, "ban_rate": 0.0, "kda": 3.26}, {"name": "Smolder", "count": 4, "pick_rate": 2.7, "win_rate": 25.0, "ban_rate": 1.4, "kda": 1.5}, {"name": "Sivir", "count": 4, "pick_rate": 2.7, "win_rate": 100.0, "ban_rate": 0.0, "kda": 7.5}, {"name": "Twitch", "count": 4, "pick_rate": 2.7, "win_rate": 75.0, "ban_rate": 0.0, "kda": 2.44}], "UTILITY": [{"name": "Elise", "count": 19, "pick_rate": 12.8, "win_rate": 78.9, "ban_rate": 4.1, "kda": 3.9}, {"name": "Nautilus", "count": 15, "pick_rate": 10.1, "win_rate": 60.0, "ban_rate": 3.4, "kda": 2.74}, {"name": "Karma", "count": 11, "pick_rate": 7.4, "win_rate": 54.5, "ban_rate": 7.4, "kda": 3.85}, {"name": "Alistar", "count": 11, "pick_rate": 7.4, "win_rate": 54.5, "ban_rate": 2.0, "kda": 2.64}, {"name": "Rell", "count": 8, "pick_rate": 5.4, "win_rate": 25.0, "ban_rate": 1.4, "kda": 2.91}, {"name": "Bard", "count": 7, "pick_rate": 4.7, "win_rate": 42.9, "ban_rate": 52.0, "kda": 2.37}, {"name": "Neeko", "count": 7, "pick_rate": 4.7, "win_rate": 28.6, "ban_rate": 7.4, "kda": 2.93}, {"name": "Lux", "count": 7, "pick_rate": 4.7, "win_rate": 71.4, "ban_rate": 0.0, "kda": 2.9}, {"name": "Rakan", "count": 6, "pick_rate": 4.1, "win_rate": 50.0, "ban_rate": 0.7, "kda": 3.91}, {"name": "Braum", "count": 5, "pick_rate": 3.4, "win_rate": 40.0, "ban_rate": 0.0, "kda": 2.65}, {"name": "Thresh", "count": 5, "pick_rate": 3.4, "win_rate": 40.0, "ban_rate": 0.7, "kda": 2.03}, {"name": "Janna", "count": 5, "pick_rate": 3.4, "win_rate": 40.0, "ban_rate": 6.1, "kda": 2.8}, {"name": "Pyke", "count": 4, "pick_rate": 2.7, "win_rate": 50.0, "ban_rate": 42.6, "kda": 1.62}, {"name": "Sona", "count": 4, "pick_rate": 2.7, "win_rate": 75.0, "ban_rate": 0.7, "kda": 3.52}, {"name": "Leona", "count": 3, "pick_rate": 2.0, "win_rate": 66.7, "ban_rate": 2.0, "kda": 3.22}]}}}}
+{
+    "meta": {
+        "total_games": 2772,
+        "patch_games": 457,
+        "last_updated": "2025-12-06 15:50 UTC",
+        "current_patch": "15.24"
+    },
+    "regions": {
+        "kr": {
+            "season": {
+                "TOP": [
+                    {
+                        "name": "Rumble",
+                        "count": 121,
+                        "pick_rate": 9.2,
+                        "win_rate": 55.4,
+                        "ban_rate": 6.3,
+                        "kda": 2.26
+                    },
+                    {
+                        "name": "Ambessa",
+                        "count": 116,
+                        "pick_rate": 8.8,
+                        "win_rate": 40.5,
+                        "ban_rate": 28.0,
+                        "kda": 1.6
+                    },
+                    {
+                        "name": "KSante",
+                        "count": 110,
+                        "pick_rate": 8.4,
+                        "win_rate": 44.5,
+                        "ban_rate": 1.2,
+                        "kda": 1.96
+                    },
+                    {
+                        "name": "Zaahen",
+                        "count": 101,
+                        "pick_rate": 7.7,
+                        "win_rate": 43.6,
+                        "ban_rate": 46.2,
+                        "kda": 1.48
+                    },
+                    {
+                        "name": "Jax",
+                        "count": 77,
+                        "pick_rate": 5.9,
+                        "win_rate": 45.5,
+                        "ban_rate": 15.7,
+                        "kda": 2.04
+                    },
+                    {
+                        "name": "Jayce",
+                        "count": 74,
+                        "pick_rate": 5.6,
+                        "win_rate": 50.0,
+                        "ban_rate": 20.3,
+                        "kda": 1.58
+                    },
+                    {
+                        "name": "Sion",
+                        "count": 66,
+                        "pick_rate": 5.0,
+                        "win_rate": 51.5,
+                        "ban_rate": 0.6,
+                        "kda": 2.22
+                    },
+                    {
+                        "name": "Renekton",
+                        "count": 62,
+                        "pick_rate": 4.7,
+                        "win_rate": 46.8,
+                        "ban_rate": 2.9,
+                        "kda": 1.84
+                    },
+                    {
+                        "name": "RekSai",
+                        "count": 49,
+                        "pick_rate": 3.7,
+                        "win_rate": 49.0,
+                        "ban_rate": 1.2,
+                        "kda": 2.26
+                    },
+                    {
+                        "name": "Gnar",
+                        "count": 40,
+                        "pick_rate": 3.0,
+                        "win_rate": 32.5,
+                        "ban_rate": 1.2,
+                        "kda": 1.7
+                    },
+                    {
+                        "name": "Camille",
+                        "count": 37,
+                        "pick_rate": 2.8,
+                        "win_rate": 48.6,
+                        "ban_rate": 0.2,
+                        "kda": 1.7
+                    },
+                    {
+                        "name": "Gwen",
+                        "count": 35,
+                        "pick_rate": 2.7,
+                        "win_rate": 40.0,
+                        "ban_rate": 0.9,
+                        "kda": 1.55
+                    },
+                    {
+                        "name": "Darius",
+                        "count": 34,
+                        "pick_rate": 2.6,
+                        "win_rate": 58.8,
+                        "ban_rate": 27.7,
+                        "kda": 2.64
+                    },
+                    {
+                        "name": "Aurora",
+                        "count": 24,
+                        "pick_rate": 1.8,
+                        "win_rate": 33.3,
+                        "ban_rate": 1.1,
+                        "kda": 1.81
+                    },
+                    {
+                        "name": "Singed",
+                        "count": 21,
+                        "pick_rate": 1.6,
+                        "win_rate": 38.1,
+                        "ban_rate": 3.7,
+                        "kda": 2.13
+                    }
+                ],
+                "JUNGLE": [
+                    {
+                        "name": "Aatrox",
+                        "count": 187,
+                        "pick_rate": 14.2,
+                        "win_rate": 50.3,
+                        "ban_rate": 24.9,
+                        "kda": 2.67
+                    },
+                    {
+                        "name": "LeeSin",
+                        "count": 143,
+                        "pick_rate": 10.9,
+                        "win_rate": 53.8,
+                        "ban_rate": 18.6,
+                        "kda": 3.17
+                    },
+                    {
+                        "name": "Ambessa",
+                        "count": 116,
+                        "pick_rate": 8.8,
+                        "win_rate": 32.8,
+                        "ban_rate": 28.0,
+                        "kda": 2.45
+                    },
+                    {
+                        "name": "Sylas",
+                        "count": 87,
+                        "pick_rate": 6.6,
+                        "win_rate": 40.2,
+                        "ban_rate": 17.3,
+                        "kda": 2.59
+                    },
+                    {
+                        "name": "Viego",
+                        "count": 62,
+                        "pick_rate": 4.7,
+                        "win_rate": 50.0,
+                        "ban_rate": 0.9,
+                        "kda": 2.97
+                    },
+                    {
+                        "name": "Qiyana",
+                        "count": 56,
+                        "pick_rate": 4.3,
+                        "win_rate": 57.1,
+                        "ban_rate": 101.7,
+                        "kda": 3.35
+                    },
+                    {
+                        "name": "Jayce",
+                        "count": 55,
+                        "pick_rate": 4.2,
+                        "win_rate": 40.0,
+                        "ban_rate": 20.3,
+                        "kda": 2.9
+                    },
+                    {
+                        "name": "XinZhao",
+                        "count": 53,
+                        "pick_rate": 4.0,
+                        "win_rate": 37.7,
+                        "ban_rate": 0.5,
+                        "kda": 2.23
+                    },
+                    {
+                        "name": "Nidalee",
+                        "count": 46,
+                        "pick_rate": 3.5,
+                        "win_rate": 52.2,
+                        "ban_rate": 8.7,
+                        "kda": 4.59
+                    },
+                    {
+                        "name": "MasterYi",
+                        "count": 42,
+                        "pick_rate": 3.2,
+                        "win_rate": 61.9,
+                        "ban_rate": 18.0,
+                        "kda": 2.92
+                    },
+                    {
+                        "name": "Belveth",
+                        "count": 39,
+                        "pick_rate": 3.0,
+                        "win_rate": 41.0,
+                        "ban_rate": 2.5,
+                        "kda": 2.97
+                    },
+                    {
+                        "name": "Hecarim",
+                        "count": 35,
+                        "pick_rate": 2.7,
+                        "win_rate": 40.0,
+                        "ban_rate": 18.5,
+                        "kda": 3.21
+                    },
+                    {
+                        "name": "JarvanIV",
+                        "count": 31,
+                        "pick_rate": 2.4,
+                        "win_rate": 48.4,
+                        "ban_rate": 0.8,
+                        "kda": 3.74
+                    },
+                    {
+                        "name": "Vi",
+                        "count": 24,
+                        "pick_rate": 1.8,
+                        "win_rate": 41.7,
+                        "ban_rate": 0.2,
+                        "kda": 2.89
+                    },
+                    {
+                        "name": "Talon",
+                        "count": 22,
+                        "pick_rate": 1.7,
+                        "win_rate": 31.8,
+                        "ban_rate": 4.3,
+                        "kda": 2.38
+                    }
+                ],
+                "MIDDLE": [
+                    {
+                        "name": "Orianna",
+                        "count": 132,
+                        "pick_rate": 10.0,
+                        "win_rate": 46.2,
+                        "ban_rate": 34.4,
+                        "kda": 2.85
+                    },
+                    {
+                        "name": "Ryze",
+                        "count": 101,
+                        "pick_rate": 7.7,
+                        "win_rate": 48.5,
+                        "ban_rate": 2.4,
+                        "kda": 2.37
+                    },
+                    {
+                        "name": "Syndra",
+                        "count": 81,
+                        "pick_rate": 6.2,
+                        "win_rate": 45.7,
+                        "ban_rate": 7.8,
+                        "kda": 2.38
+                    },
+                    {
+                        "name": "Taliyah",
+                        "count": 61,
+                        "pick_rate": 4.6,
+                        "win_rate": 57.4,
+                        "ban_rate": 1.5,
+                        "kda": 2.8
+                    },
+                    {
+                        "name": "Yone",
+                        "count": 56,
+                        "pick_rate": 4.3,
+                        "win_rate": 39.3,
+                        "ban_rate": 0.7,
+                        "kda": 1.87
+                    },
+                    {
+                        "name": "Azir",
+                        "count": 54,
+                        "pick_rate": 4.1,
+                        "win_rate": 40.7,
+                        "ban_rate": 4.4,
+                        "kda": 2.11
+                    },
+                    {
+                        "name": "Kayle",
+                        "count": 52,
+                        "pick_rate": 4.0,
+                        "win_rate": 61.5,
+                        "ban_rate": 14.7,
+                        "kda": 3.12
+                    },
+                    {
+                        "name": "Aurora",
+                        "count": 48,
+                        "pick_rate": 3.7,
+                        "win_rate": 47.9,
+                        "ban_rate": 1.1,
+                        "kda": 3.0
+                    },
+                    {
+                        "name": "Viktor",
+                        "count": 49,
+                        "pick_rate": 3.7,
+                        "win_rate": 46.9,
+                        "ban_rate": 1.0,
+                        "kda": 2.35
+                    },
+                    {
+                        "name": "Mel",
+                        "count": 45,
+                        "pick_rate": 3.4,
+                        "win_rate": 40.0,
+                        "ban_rate": 15.4,
+                        "kda": 2.45
+                    },
+                    {
+                        "name": "Akali",
+                        "count": 45,
+                        "pick_rate": 3.4,
+                        "win_rate": 55.6,
+                        "ban_rate": 1.6,
+                        "kda": 2.7
+                    },
+                    {
+                        "name": "Akshan",
+                        "count": 43,
+                        "pick_rate": 3.3,
+                        "win_rate": 44.2,
+                        "ban_rate": 17.6,
+                        "kda": 3.6
+                    },
+                    {
+                        "name": "Galio",
+                        "count": 41,
+                        "pick_rate": 3.1,
+                        "win_rate": 36.6,
+                        "ban_rate": 1.0,
+                        "kda": 2.37
+                    },
+                    {
+                        "name": "TwistedFate",
+                        "count": 38,
+                        "pick_rate": 2.9,
+                        "win_rate": 50.0,
+                        "ban_rate": 1.7,
+                        "kda": 2.94
+                    },
+                    {
+                        "name": "Sylas",
+                        "count": 37,
+                        "pick_rate": 2.8,
+                        "win_rate": 43.2,
+                        "ban_rate": 17.3,
+                        "kda": 2.37
+                    }
+                ],
+                "BOTTOM": [
+                    {
+                        "name": "Yunara",
+                        "count": 171,
+                        "pick_rate": 13.0,
+                        "win_rate": 46.2,
+                        "ban_rate": 10.5,
+                        "kda": 2.22
+                    },
+                    {
+                        "name": "Kaisa",
+                        "count": 152,
+                        "pick_rate": 11.6,
+                        "win_rate": 48.7,
+                        "ban_rate": 5.5,
+                        "kda": 2.54
+                    },
+                    {
+                        "name": "Ezreal",
+                        "count": 135,
+                        "pick_rate": 10.3,
+                        "win_rate": 48.9,
+                        "ban_rate": 4.9,
+                        "kda": 2.65
+                    },
+                    {
+                        "name": "Lucian",
+                        "count": 86,
+                        "pick_rate": 6.5,
+                        "win_rate": 44.2,
+                        "ban_rate": 4.6,
+                        "kda": 2.32
+                    },
+                    {
+                        "name": "Jhin",
+                        "count": 72,
+                        "pick_rate": 5.5,
+                        "win_rate": 43.1,
+                        "ban_rate": 1.2,
+                        "kda": 2.77
+                    },
+                    {
+                        "name": "MissFortune",
+                        "count": 62,
+                        "pick_rate": 4.7,
+                        "win_rate": 53.2,
+                        "ban_rate": 3.3,
+                        "kda": 2.77
+                    },
+                    {
+                        "name": "Tristana",
+                        "count": 62,
+                        "pick_rate": 4.7,
+                        "win_rate": 54.8,
+                        "ban_rate": 3.1,
+                        "kda": 2.34
+                    },
+                    {
+                        "name": "Aphelios",
+                        "count": 55,
+                        "pick_rate": 4.2,
+                        "win_rate": 47.3,
+                        "ban_rate": 0.4,
+                        "kda": 1.89
+                    },
+                    {
+                        "name": "Zeri",
+                        "count": 47,
+                        "pick_rate": 3.6,
+                        "win_rate": 42.6,
+                        "ban_rate": 0.4,
+                        "kda": 2.49
+                    },
+                    {
+                        "name": "Ziggs",
+                        "count": 45,
+                        "pick_rate": 3.4,
+                        "win_rate": 42.2,
+                        "ban_rate": 0.8,
+                        "kda": 2.31
+                    },
+                    {
+                        "name": "Mel",
+                        "count": 44,
+                        "pick_rate": 3.3,
+                        "win_rate": 36.4,
+                        "ban_rate": 15.4,
+                        "kda": 2.11
+                    },
+                    {
+                        "name": "Corki",
+                        "count": 43,
+                        "pick_rate": 3.3,
+                        "win_rate": 39.5,
+                        "ban_rate": 0.3,
+                        "kda": 2.25
+                    },
+                    {
+                        "name": "Ashe",
+                        "count": 44,
+                        "pick_rate": 3.3,
+                        "win_rate": 52.3,
+                        "ban_rate": 2.4,
+                        "kda": 2.42
+                    },
+                    {
+                        "name": "Varus",
+                        "count": 39,
+                        "pick_rate": 3.0,
+                        "win_rate": 28.2,
+                        "ban_rate": 0.8,
+                        "kda": 2.03
+                    },
+                    {
+                        "name": "Sivir",
+                        "count": 38,
+                        "pick_rate": 2.9,
+                        "win_rate": 42.1,
+                        "ban_rate": 3.3,
+                        "kda": 2.48
+                    }
+                ],
+                "UTILITY": [
+                    {
+                        "name": "Alistar",
+                        "count": 127,
+                        "pick_rate": 9.7,
+                        "win_rate": 46.5,
+                        "ban_rate": 1.8,
+                        "kda": 2.67
+                    },
+                    {
+                        "name": "Poppy",
+                        "count": 109,
+                        "pick_rate": 8.3,
+                        "win_rate": 55.0,
+                        "ban_rate": 36.0,
+                        "kda": 2.72
+                    },
+                    {
+                        "name": "Rakan",
+                        "count": 97,
+                        "pick_rate": 7.4,
+                        "win_rate": 36.1,
+                        "ban_rate": 0.8,
+                        "kda": 2.74
+                    },
+                    {
+                        "name": "Neeko",
+                        "count": 97,
+                        "pick_rate": 7.4,
+                        "win_rate": 41.2,
+                        "ban_rate": 9.0,
+                        "kda": 2.11
+                    },
+                    {
+                        "name": "Nautilus",
+                        "count": 93,
+                        "pick_rate": 7.1,
+                        "win_rate": 49.5,
+                        "ban_rate": 2.9,
+                        "kda": 2.33
+                    },
+                    {
+                        "name": "Braum",
+                        "count": 78,
+                        "pick_rate": 5.9,
+                        "win_rate": 48.7,
+                        "ban_rate": 2.8,
+                        "kda": 2.54
+                    },
+                    {
+                        "name": "Bard",
+                        "count": 76,
+                        "pick_rate": 5.8,
+                        "win_rate": 52.6,
+                        "ban_rate": 3.4,
+                        "kda": 3.02
+                    },
+                    {
+                        "name": "Pyke",
+                        "count": 75,
+                        "pick_rate": 5.7,
+                        "win_rate": 44.0,
+                        "ban_rate": 42.5,
+                        "kda": 2.26
+                    },
+                    {
+                        "name": "Leona",
+                        "count": 75,
+                        "pick_rate": 5.7,
+                        "win_rate": 40.0,
+                        "ban_rate": 0.6,
+                        "kda": 2.17
+                    },
+                    {
+                        "name": "Lulu",
+                        "count": 62,
+                        "pick_rate": 4.7,
+                        "win_rate": 46.8,
+                        "ban_rate": 0.9,
+                        "kda": 3.35
+                    },
+                    {
+                        "name": "Rell",
+                        "count": 51,
+                        "pick_rate": 3.9,
+                        "win_rate": 41.2,
+                        "ban_rate": 0.8,
+                        "kda": 2.64
+                    },
+                    {
+                        "name": "Blitzcrank",
+                        "count": 43,
+                        "pick_rate": 3.3,
+                        "win_rate": 41.9,
+                        "ban_rate": 1.0,
+                        "kda": 2.3
+                    },
+                    {
+                        "name": "Karma",
+                        "count": 40,
+                        "pick_rate": 3.0,
+                        "win_rate": 55.0,
+                        "ban_rate": 1.4,
+                        "kda": 3.07
+                    },
+                    {
+                        "name": "Pantheon",
+                        "count": 35,
+                        "pick_rate": 2.7,
+                        "win_rate": 28.6,
+                        "ban_rate": 2.4,
+                        "kda": 1.85
+                    },
+                    {
+                        "name": "Elise",
+                        "count": 27,
+                        "pick_rate": 2.1,
+                        "win_rate": 51.9,
+                        "ban_rate": 10.0,
+                        "kda": 2.45
+                    }
+                ]
+            },
+            "patch": {
+                "TOP": [
+                    {
+                        "name": "Ambessa",
+                        "count": 36,
+                        "pick_rate": 11.7,
+                        "win_rate": 38.9,
+                        "ban_rate": 19.7,
+                        "kda": 1.59
+                    },
+                    {
+                        "name": "Zaahen",
+                        "count": 30,
+                        "pick_rate": 9.7,
+                        "win_rate": 40.0,
+                        "ban_rate": 52.4,
+                        "kda": 1.34
+                    },
+                    {
+                        "name": "Rumble",
+                        "count": 26,
+                        "pick_rate": 8.4,
+                        "win_rate": 61.5,
+                        "ban_rate": 6.8,
+                        "kda": 2.17
+                    },
+                    {
+                        "name": "KSante",
+                        "count": 24,
+                        "pick_rate": 7.8,
+                        "win_rate": 41.7,
+                        "ban_rate": 1.0,
+                        "kda": 1.92
+                    },
+                    {
+                        "name": "Jayce",
+                        "count": 21,
+                        "pick_rate": 6.8,
+                        "win_rate": 47.6,
+                        "ban_rate": 26.9,
+                        "kda": 1.53
+                    },
+                    {
+                        "name": "Sion",
+                        "count": 17,
+                        "pick_rate": 5.5,
+                        "win_rate": 47.1,
+                        "ban_rate": 0.3,
+                        "kda": 2.04
+                    },
+                    {
+                        "name": "Jax",
+                        "count": 11,
+                        "pick_rate": 3.6,
+                        "win_rate": 45.5,
+                        "ban_rate": 9.4,
+                        "kda": 1.73
+                    },
+                    {
+                        "name": "Darius",
+                        "count": 11,
+                        "pick_rate": 3.6,
+                        "win_rate": 45.5,
+                        "ban_rate": 31.7,
+                        "kda": 3.19
+                    },
+                    {
+                        "name": "Gnar",
+                        "count": 11,
+                        "pick_rate": 3.6,
+                        "win_rate": 27.3,
+                        "ban_rate": 1.6,
+                        "kda": 1.34
+                    },
+                    {
+                        "name": "Gwen",
+                        "count": 8,
+                        "pick_rate": 2.6,
+                        "win_rate": 37.5,
+                        "ban_rate": 1.3,
+                        "kda": 1.21
+                    },
+                    {
+                        "name": "Renekton",
+                        "count": 8,
+                        "pick_rate": 2.6,
+                        "win_rate": 50.0,
+                        "ban_rate": 3.6,
+                        "kda": 1.73
+                    },
+                    {
+                        "name": "Aurora",
+                        "count": 7,
+                        "pick_rate": 2.3,
+                        "win_rate": 42.9,
+                        "ban_rate": 1.0,
+                        "kda": 2.1
+                    },
+                    {
+                        "name": "RekSai",
+                        "count": 6,
+                        "pick_rate": 1.9,
+                        "win_rate": 33.3,
+                        "ban_rate": 1.6,
+                        "kda": 3.37
+                    },
+                    {
+                        "name": "Malphite",
+                        "count": 6,
+                        "pick_rate": 1.9,
+                        "win_rate": 50.0,
+                        "ban_rate": 1.3,
+                        "kda": 2.4
+                    },
+                    {
+                        "name": "Camille",
+                        "count": 6,
+                        "pick_rate": 1.9,
+                        "win_rate": 33.3,
+                        "ban_rate": 0.0,
+                        "kda": 1.76
+                    }
+                ],
+                "JUNGLE": [
+                    {
+                        "name": "Aatrox",
+                        "count": 59,
+                        "pick_rate": 19.1,
+                        "win_rate": 52.5,
+                        "ban_rate": 40.5,
+                        "kda": 2.77
+                    },
+                    {
+                        "name": "Ambessa",
+                        "count": 38,
+                        "pick_rate": 12.3,
+                        "win_rate": 34.2,
+                        "ban_rate": 19.7,
+                        "kda": 2.93
+                    },
+                    {
+                        "name": "LeeSin",
+                        "count": 25,
+                        "pick_rate": 8.1,
+                        "win_rate": 48.0,
+                        "ban_rate": 11.0,
+                        "kda": 3.59
+                    },
+                    {
+                        "name": "Qiyana",
+                        "count": 18,
+                        "pick_rate": 5.8,
+                        "win_rate": 55.6,
+                        "ban_rate": 94.2,
+                        "kda": 3.02
+                    },
+                    {
+                        "name": "Sylas",
+                        "count": 17,
+                        "pick_rate": 5.5,
+                        "win_rate": 35.3,
+                        "ban_rate": 13.9,
+                        "kda": 2.03
+                    },
+                    {
+                        "name": "Jayce",
+                        "count": 15,
+                        "pick_rate": 4.9,
+                        "win_rate": 40.0,
+                        "ban_rate": 26.9,
+                        "kda": 3.21
+                    },
+                    {
+                        "name": "Belveth",
+                        "count": 14,
+                        "pick_rate": 4.5,
+                        "win_rate": 57.1,
+                        "ban_rate": 1.6,
+                        "kda": 3.94
+                    },
+                    {
+                        "name": "MasterYi",
+                        "count": 12,
+                        "pick_rate": 3.9,
+                        "win_rate": 58.3,
+                        "ban_rate": 13.6,
+                        "kda": 3.58
+                    },
+                    {
+                        "name": "Nidalee",
+                        "count": 10,
+                        "pick_rate": 3.2,
+                        "win_rate": 60.0,
+                        "ban_rate": 5.5,
+                        "kda": 4.95
+                    },
+                    {
+                        "name": "Talon",
+                        "count": 9,
+                        "pick_rate": 2.9,
+                        "win_rate": 33.3,
+                        "ban_rate": 3.2,
+                        "kda": 2.49
+                    },
+                    {
+                        "name": "Viego",
+                        "count": 8,
+                        "pick_rate": 2.6,
+                        "win_rate": 62.5,
+                        "ban_rate": 0.0,
+                        "kda": 2.21
+                    },
+                    {
+                        "name": "XinZhao",
+                        "count": 8,
+                        "pick_rate": 2.6,
+                        "win_rate": 25.0,
+                        "ban_rate": 1.0,
+                        "kda": 2.35
+                    },
+                    {
+                        "name": "Karthus",
+                        "count": 8,
+                        "pick_rate": 2.6,
+                        "win_rate": 37.5,
+                        "ban_rate": 14.6,
+                        "kda": 1.66
+                    },
+                    {
+                        "name": "Zaahen",
+                        "count": 8,
+                        "pick_rate": 2.6,
+                        "win_rate": 12.5,
+                        "ban_rate": 52.4,
+                        "kda": 2.04
+                    },
+                    {
+                        "name": "FiddleSticks",
+                        "count": 7,
+                        "pick_rate": 2.3,
+                        "win_rate": 57.1,
+                        "ban_rate": 6.5,
+                        "kda": 2.38
+                    }
+                ],
+                "MIDDLE": [
+                    {
+                        "name": "Viktor",
+                        "count": 28,
+                        "pick_rate": 9.1,
+                        "win_rate": 42.9,
+                        "ban_rate": 2.9,
+                        "kda": 2.34
+                    },
+                    {
+                        "name": "Orianna",
+                        "count": 24,
+                        "pick_rate": 7.8,
+                        "win_rate": 45.8,
+                        "ban_rate": 39.8,
+                        "kda": 2.53
+                    },
+                    {
+                        "name": "Taliyah",
+                        "count": 20,
+                        "pick_rate": 6.5,
+                        "win_rate": 50.0,
+                        "ban_rate": 2.3,
+                        "kda": 2.42
+                    },
+                    {
+                        "name": "Kayle",
+                        "count": 19,
+                        "pick_rate": 6.1,
+                        "win_rate": 42.1,
+                        "ban_rate": 14.6,
+                        "kda": 3.28
+                    },
+                    {
+                        "name": "Aurora",
+                        "count": 11,
+                        "pick_rate": 3.6,
+                        "win_rate": 45.5,
+                        "ban_rate": 1.0,
+                        "kda": 3.37
+                    },
+                    {
+                        "name": "Ryze",
+                        "count": 11,
+                        "pick_rate": 3.6,
+                        "win_rate": 27.3,
+                        "ban_rate": 2.3,
+                        "kda": 1.73
+                    },
+                    {
+                        "name": "Yone",
+                        "count": 11,
+                        "pick_rate": 3.6,
+                        "win_rate": 36.4,
+                        "ban_rate": 1.9,
+                        "kda": 1.71
+                    },
+                    {
+                        "name": "Mel",
+                        "count": 10,
+                        "pick_rate": 3.2,
+                        "win_rate": 60.0,
+                        "ban_rate": 13.6,
+                        "kda": 3.02
+                    },
+                    {
+                        "name": "Azir",
+                        "count": 10,
+                        "pick_rate": 3.2,
+                        "win_rate": 50.0,
+                        "ban_rate": 4.2,
+                        "kda": 2.58
+                    },
+                    {
+                        "name": "Galio",
+                        "count": 9,
+                        "pick_rate": 2.9,
+                        "win_rate": 66.7,
+                        "ban_rate": 1.0,
+                        "kda": 2.67
+                    },
+                    {
+                        "name": "Hwei",
+                        "count": 9,
+                        "pick_rate": 2.9,
+                        "win_rate": 55.6,
+                        "ban_rate": 0.3,
+                        "kda": 2.89
+                    },
+                    {
+                        "name": "Syndra",
+                        "count": 9,
+                        "pick_rate": 2.9,
+                        "win_rate": 22.2,
+                        "ban_rate": 10.7,
+                        "kda": 2.02
+                    },
+                    {
+                        "name": "Ahri",
+                        "count": 8,
+                        "pick_rate": 2.6,
+                        "win_rate": 50.0,
+                        "ban_rate": 0.0,
+                        "kda": 3.97
+                    },
+                    {
+                        "name": "Akali",
+                        "count": 8,
+                        "pick_rate": 2.6,
+                        "win_rate": 62.5,
+                        "ban_rate": 2.9,
+                        "kda": 2.92
+                    },
+                    {
+                        "name": "Leblanc",
+                        "count": 8,
+                        "pick_rate": 2.6,
+                        "win_rate": 37.5,
+                        "ban_rate": 23.0,
+                        "kda": 2.41
+                    }
+                ],
+                "BOTTOM": [
+                    {
+                        "name": "Yunara",
+                        "count": 49,
+                        "pick_rate": 15.9,
+                        "win_rate": 49.0,
+                        "ban_rate": 15.2,
+                        "kda": 2.46
+                    },
+                    {
+                        "name": "Ezreal",
+                        "count": 30,
+                        "pick_rate": 9.7,
+                        "win_rate": 40.0,
+                        "ban_rate": 2.6,
+                        "kda": 1.97
+                    },
+                    {
+                        "name": "Kaisa",
+                        "count": 25,
+                        "pick_rate": 8.1,
+                        "win_rate": 56.0,
+                        "ban_rate": 1.6,
+                        "kda": 2.72
+                    },
+                    {
+                        "name": "Lucian",
+                        "count": 20,
+                        "pick_rate": 6.5,
+                        "win_rate": 20.0,
+                        "ban_rate": 3.2,
+                        "kda": 1.63
+                    },
+                    {
+                        "name": "MissFortune",
+                        "count": 19,
+                        "pick_rate": 6.1,
+                        "win_rate": 47.4,
+                        "ban_rate": 8.4,
+                        "kda": 2.13
+                    },
+                    {
+                        "name": "Jhin",
+                        "count": 18,
+                        "pick_rate": 5.8,
+                        "win_rate": 50.0,
+                        "ban_rate": 1.9,
+                        "kda": 2.89
+                    },
+                    {
+                        "name": "Aphelios",
+                        "count": 17,
+                        "pick_rate": 5.5,
+                        "win_rate": 47.1,
+                        "ban_rate": 0.3,
+                        "kda": 1.86
+                    },
+                    {
+                        "name": "Zeri",
+                        "count": 17,
+                        "pick_rate": 5.5,
+                        "win_rate": 29.4,
+                        "ban_rate": 0.3,
+                        "kda": 1.66
+                    },
+                    {
+                        "name": "Sivir",
+                        "count": 12,
+                        "pick_rate": 3.9,
+                        "win_rate": 33.3,
+                        "ban_rate": 2.6,
+                        "kda": 2.06
+                    },
+                    {
+                        "name": "Tristana",
+                        "count": 12,
+                        "pick_rate": 3.9,
+                        "win_rate": 50.0,
+                        "ban_rate": 2.6,
+                        "kda": 2.26
+                    },
+                    {
+                        "name": "Corki",
+                        "count": 11,
+                        "pick_rate": 3.6,
+                        "win_rate": 63.6,
+                        "ban_rate": 0.0,
+                        "kda": 3.04
+                    },
+                    {
+                        "name": "Ashe",
+                        "count": 11,
+                        "pick_rate": 3.6,
+                        "win_rate": 54.5,
+                        "ban_rate": 1.9,
+                        "kda": 2.32
+                    },
+                    {
+                        "name": "Mel",
+                        "count": 7,
+                        "pick_rate": 2.3,
+                        "win_rate": 42.9,
+                        "ban_rate": 13.6,
+                        "kda": 2.14
+                    },
+                    {
+                        "name": "Ziggs",
+                        "count": 6,
+                        "pick_rate": 1.9,
+                        "win_rate": 50.0,
+                        "ban_rate": 0.0,
+                        "kda": 1.85
+                    },
+                    {
+                        "name": "Smolder",
+                        "count": 6,
+                        "pick_rate": 1.9,
+                        "win_rate": 50.0,
+                        "ban_rate": 0.0,
+                        "kda": 2.32
+                    }
+                ],
+                "UTILITY": [
+                    {
+                        "name": "Alistar",
+                        "count": 28,
+                        "pick_rate": 9.1,
+                        "win_rate": 60.7,
+                        "ban_rate": 2.6,
+                        "kda": 2.87
+                    },
+                    {
+                        "name": "Neeko",
+                        "count": 24,
+                        "pick_rate": 7.8,
+                        "win_rate": 37.5,
+                        "ban_rate": 8.7,
+                        "kda": 2.01
+                    },
+                    {
+                        "name": "Pyke",
+                        "count": 23,
+                        "pick_rate": 7.4,
+                        "win_rate": 52.2,
+                        "ban_rate": 45.0,
+                        "kda": 2.48
+                    },
+                    {
+                        "name": "Bard",
+                        "count": 22,
+                        "pick_rate": 7.1,
+                        "win_rate": 45.5,
+                        "ban_rate": 4.2,
+                        "kda": 2.77
+                    },
+                    {
+                        "name": "Leona",
+                        "count": 22,
+                        "pick_rate": 7.1,
+                        "win_rate": 45.5,
+                        "ban_rate": 0.3,
+                        "kda": 2.27
+                    },
+                    {
+                        "name": "Poppy",
+                        "count": 21,
+                        "pick_rate": 6.8,
+                        "win_rate": 57.1,
+                        "ban_rate": 31.4,
+                        "kda": 3.22
+                    },
+                    {
+                        "name": "Nautilus",
+                        "count": 19,
+                        "pick_rate": 6.1,
+                        "win_rate": 47.4,
+                        "ban_rate": 3.2,
+                        "kda": 2.47
+                    },
+                    {
+                        "name": "Rakan",
+                        "count": 19,
+                        "pick_rate": 6.1,
+                        "win_rate": 21.1,
+                        "ban_rate": 1.6,
+                        "kda": 2.06
+                    },
+                    {
+                        "name": "Braum",
+                        "count": 17,
+                        "pick_rate": 5.5,
+                        "win_rate": 41.2,
+                        "ban_rate": 4.5,
+                        "kda": 2.16
+                    },
+                    {
+                        "name": "Lulu",
+                        "count": 15,
+                        "pick_rate": 4.9,
+                        "win_rate": 53.3,
+                        "ban_rate": 0.3,
+                        "kda": 3.24
+                    },
+                    {
+                        "name": "Blitzcrank",
+                        "count": 13,
+                        "pick_rate": 4.2,
+                        "win_rate": 23.1,
+                        "ban_rate": 1.0,
+                        "kda": 1.64
+                    },
+                    {
+                        "name": "Rell",
+                        "count": 11,
+                        "pick_rate": 3.6,
+                        "win_rate": 45.5,
+                        "ban_rate": 1.0,
+                        "kda": 2.96
+                    },
+                    {
+                        "name": "Elise",
+                        "count": 11,
+                        "pick_rate": 3.6,
+                        "win_rate": 54.5,
+                        "ban_rate": 9.7,
+                        "kda": 2.48
+                    },
+                    {
+                        "name": "Seraphine",
+                        "count": 10,
+                        "pick_rate": 3.2,
+                        "win_rate": 40.0,
+                        "ban_rate": 1.0,
+                        "kda": 2.38
+                    },
+                    {
+                        "name": "Pantheon",
+                        "count": 7,
+                        "pick_rate": 2.3,
+                        "win_rate": 42.9,
+                        "ban_rate": 3.9,
+                        "kda": 2.3
+                    }
+                ]
+            }
+        },
+        "euw1": {
+            "season": {
+                "TOP": [
+                    {
+                        "name": "Ambessa",
+                        "count": 91,
+                        "pick_rate": 6.2,
+                        "win_rate": 53.8,
+                        "ban_rate": 34.8,
+                        "kda": 2.02
+                    },
+                    {
+                        "name": "KSante",
+                        "count": 71,
+                        "pick_rate": 4.9,
+                        "win_rate": 42.3,
+                        "ban_rate": 7.0,
+                        "kda": 2.1
+                    },
+                    {
+                        "name": "Rumble",
+                        "count": 68,
+                        "pick_rate": 4.7,
+                        "win_rate": 39.7,
+                        "ban_rate": 4.8,
+                        "kda": 1.99
+                    },
+                    {
+                        "name": "Zaahen",
+                        "count": 66,
+                        "pick_rate": 4.5,
+                        "win_rate": 47.0,
+                        "ban_rate": 39.7,
+                        "kda": 1.88
+                    },
+                    {
+                        "name": "Fiora",
+                        "count": 65,
+                        "pick_rate": 4.5,
+                        "win_rate": 61.5,
+                        "ban_rate": 8.6,
+                        "kda": 1.87
+                    },
+                    {
+                        "name": "Aatrox",
+                        "count": 63,
+                        "pick_rate": 4.3,
+                        "win_rate": 42.9,
+                        "ban_rate": 6.0,
+                        "kda": 1.87
+                    },
+                    {
+                        "name": "Sion",
+                        "count": 58,
+                        "pick_rate": 4.0,
+                        "win_rate": 43.1,
+                        "ban_rate": 2.3,
+                        "kda": 1.85
+                    },
+                    {
+                        "name": "Renekton",
+                        "count": 54,
+                        "pick_rate": 3.7,
+                        "win_rate": 55.6,
+                        "ban_rate": 7.1,
+                        "kda": 2.01
+                    },
+                    {
+                        "name": "Irelia",
+                        "count": 52,
+                        "pick_rate": 3.6,
+                        "win_rate": 51.9,
+                        "ban_rate": 7.4,
+                        "kda": 1.37
+                    },
+                    {
+                        "name": "Gwen",
+                        "count": 49,
+                        "pick_rate": 3.4,
+                        "win_rate": 53.1,
+                        "ban_rate": 2.2,
+                        "kda": 1.74
+                    },
+                    {
+                        "name": "Jayce",
+                        "count": 50,
+                        "pick_rate": 3.4,
+                        "win_rate": 46.0,
+                        "ban_rate": 16.1,
+                        "kda": 1.53
+                    },
+                    {
+                        "name": "Jax",
+                        "count": 47,
+                        "pick_rate": 3.2,
+                        "win_rate": 46.8,
+                        "ban_rate": 10.8,
+                        "kda": 1.73
+                    },
+                    {
+                        "name": "Riven",
+                        "count": 45,
+                        "pick_rate": 3.1,
+                        "win_rate": 42.2,
+                        "ban_rate": 16.0,
+                        "kda": 1.97
+                    },
+                    {
+                        "name": "Gangplank",
+                        "count": 41,
+                        "pick_rate": 2.8,
+                        "win_rate": 48.8,
+                        "ban_rate": 1.0,
+                        "kda": 2.3
+                    },
+                    {
+                        "name": "Vayne",
+                        "count": 41,
+                        "pick_rate": 2.8,
+                        "win_rate": 53.7,
+                        "ban_rate": 6.3,
+                        "kda": 1.39
+                    }
+                ],
+                "JUNGLE": [
+                    {
+                        "name": "Sylas",
+                        "count": 101,
+                        "pick_rate": 6.9,
+                        "win_rate": 52.5,
+                        "ban_rate": 24.2,
+                        "kda": 2.88
+                    },
+                    {
+                        "name": "Diana",
+                        "count": 98,
+                        "pick_rate": 6.7,
+                        "win_rate": 55.1,
+                        "ban_rate": 4.8,
+                        "kda": 3.19
+                    },
+                    {
+                        "name": "JarvanIV",
+                        "count": 86,
+                        "pick_rate": 5.9,
+                        "win_rate": 59.3,
+                        "ban_rate": 5.2,
+                        "kda": 3.97
+                    },
+                    {
+                        "name": "Viego",
+                        "count": 70,
+                        "pick_rate": 4.8,
+                        "win_rate": 57.1,
+                        "ban_rate": 5.4,
+                        "kda": 3.33
+                    },
+                    {
+                        "name": "Nidalee",
+                        "count": 70,
+                        "pick_rate": 4.8,
+                        "win_rate": 54.3,
+                        "ban_rate": 5.9,
+                        "kda": 3.36
+                    },
+                    {
+                        "name": "Qiyana",
+                        "count": 69,
+                        "pick_rate": 4.7,
+                        "win_rate": 53.6,
+                        "ban_rate": 85.4,
+                        "kda": 3.01
+                    },
+                    {
+                        "name": "LeeSin",
+                        "count": 66,
+                        "pick_rate": 4.5,
+                        "win_rate": 48.5,
+                        "ban_rate": 8.3,
+                        "kda": 2.94
+                    },
+                    {
+                        "name": "Ambessa",
+                        "count": 65,
+                        "pick_rate": 4.5,
+                        "win_rate": 46.2,
+                        "ban_rate": 34.8,
+                        "kda": 2.42
+                    },
+                    {
+                        "name": "Aatrox",
+                        "count": 66,
+                        "pick_rate": 4.5,
+                        "win_rate": 54.5,
+                        "ban_rate": 6.0,
+                        "kda": 3.0
+                    },
+                    {
+                        "name": "Zed",
+                        "count": 58,
+                        "pick_rate": 4.0,
+                        "win_rate": 50.0,
+                        "ban_rate": 29.0,
+                        "kda": 3.03
+                    },
+                    {
+                        "name": "Talon",
+                        "count": 48,
+                        "pick_rate": 3.3,
+                        "win_rate": 50.0,
+                        "ban_rate": 54.6,
+                        "kda": 3.22
+                    },
+                    {
+                        "name": "Khazix",
+                        "count": 42,
+                        "pick_rate": 2.9,
+                        "win_rate": 50.0,
+                        "ban_rate": 2.7,
+                        "kda": 2.93
+                    },
+                    {
+                        "name": "Graves",
+                        "count": 39,
+                        "pick_rate": 2.7,
+                        "win_rate": 38.5,
+                        "ban_rate": 1.8,
+                        "kda": 2.24
+                    },
+                    {
+                        "name": "Chogath",
+                        "count": 38,
+                        "pick_rate": 2.6,
+                        "win_rate": 42.1,
+                        "ban_rate": 2.3,
+                        "kda": 2.21
+                    },
+                    {
+                        "name": "Karthus",
+                        "count": 38,
+                        "pick_rate": 2.6,
+                        "win_rate": 60.5,
+                        "ban_rate": 6.4,
+                        "kda": 2.59
+                    }
+                ],
+                "MIDDLE": [
+                    {
+                        "name": "Syndra",
+                        "count": 105,
+                        "pick_rate": 7.2,
+                        "win_rate": 47.6,
+                        "ban_rate": 18.4,
+                        "kda": 2.59
+                    },
+                    {
+                        "name": "Orianna",
+                        "count": 90,
+                        "pick_rate": 6.2,
+                        "win_rate": 43.3,
+                        "ban_rate": 5.5,
+                        "kda": 2.53
+                    },
+                    {
+                        "name": "Taliyah",
+                        "count": 79,
+                        "pick_rate": 5.4,
+                        "win_rate": 51.9,
+                        "ban_rate": 5.9,
+                        "kda": 2.62
+                    },
+                    {
+                        "name": "Akali",
+                        "count": 77,
+                        "pick_rate": 5.3,
+                        "win_rate": 48.1,
+                        "ban_rate": 16.1,
+                        "kda": 2.36
+                    },
+                    {
+                        "name": "Ahri",
+                        "count": 76,
+                        "pick_rate": 5.2,
+                        "win_rate": 52.6,
+                        "ban_rate": 1.2,
+                        "kda": 3.24
+                    },
+                    {
+                        "name": "Yone",
+                        "count": 51,
+                        "pick_rate": 3.5,
+                        "win_rate": 43.1,
+                        "ban_rate": 0.6,
+                        "kda": 1.86
+                    },
+                    {
+                        "name": "Ryze",
+                        "count": 47,
+                        "pick_rate": 3.2,
+                        "win_rate": 53.2,
+                        "ban_rate": 14.9,
+                        "kda": 2.52
+                    },
+                    {
+                        "name": "Malzahar",
+                        "count": 42,
+                        "pick_rate": 2.9,
+                        "win_rate": 52.4,
+                        "ban_rate": 2.9,
+                        "kda": 2.65
+                    },
+                    {
+                        "name": "Mel",
+                        "count": 42,
+                        "pick_rate": 2.9,
+                        "win_rate": 42.9,
+                        "ban_rate": 31.4,
+                        "kda": 2.63
+                    },
+                    {
+                        "name": "Ekko",
+                        "count": 41,
+                        "pick_rate": 2.8,
+                        "win_rate": 36.6,
+                        "ban_rate": 6.0,
+                        "kda": 2.34
+                    },
+                    {
+                        "name": "Viktor",
+                        "count": 40,
+                        "pick_rate": 2.7,
+                        "win_rate": 45.0,
+                        "ban_rate": 0.5,
+                        "kda": 2.4
+                    },
+                    {
+                        "name": "Quinn",
+                        "count": 37,
+                        "pick_rate": 2.5,
+                        "win_rate": 45.9,
+                        "ban_rate": 11.1,
+                        "kda": 2.44
+                    },
+                    {
+                        "name": "Irelia",
+                        "count": 35,
+                        "pick_rate": 2.4,
+                        "win_rate": 54.3,
+                        "ban_rate": 7.4,
+                        "kda": 1.62
+                    },
+                    {
+                        "name": "Zoe",
+                        "count": 33,
+                        "pick_rate": 2.3,
+                        "win_rate": 60.6,
+                        "ban_rate": 2.3,
+                        "kda": 2.77
+                    },
+                    {
+                        "name": "Hwei",
+                        "count": 32,
+                        "pick_rate": 2.2,
+                        "win_rate": 31.2,
+                        "ban_rate": 0.8,
+                        "kda": 2.26
+                    }
+                ],
+                "BOTTOM": [
+                    {
+                        "name": "Kaisa",
+                        "count": 201,
+                        "pick_rate": 13.8,
+                        "win_rate": 49.3,
+                        "ban_rate": 7.3,
+                        "kda": 2.59
+                    },
+                    {
+                        "name": "Yunara",
+                        "count": 149,
+                        "pick_rate": 10.2,
+                        "win_rate": 51.7,
+                        "ban_rate": 17.9,
+                        "kda": 2.56
+                    },
+                    {
+                        "name": "Jhin",
+                        "count": 123,
+                        "pick_rate": 8.4,
+                        "win_rate": 42.3,
+                        "ban_rate": 0.1,
+                        "kda": 2.94
+                    },
+                    {
+                        "name": "Ezreal",
+                        "count": 87,
+                        "pick_rate": 6.0,
+                        "win_rate": 48.3,
+                        "ban_rate": 2.2,
+                        "kda": 2.87
+                    },
+                    {
+                        "name": "MissFortune",
+                        "count": 81,
+                        "pick_rate": 5.6,
+                        "win_rate": 42.0,
+                        "ban_rate": 4.6,
+                        "kda": 2.22
+                    },
+                    {
+                        "name": "Caitlyn",
+                        "count": 77,
+                        "pick_rate": 5.3,
+                        "win_rate": 50.6,
+                        "ban_rate": 3.0,
+                        "kda": 2.26
+                    },
+                    {
+                        "name": "Tristana",
+                        "count": 69,
+                        "pick_rate": 4.7,
+                        "win_rate": 46.4,
+                        "ban_rate": 2.1,
+                        "kda": 2.44
+                    },
+                    {
+                        "name": "Ashe",
+                        "count": 60,
+                        "pick_rate": 4.1,
+                        "win_rate": 41.7,
+                        "ban_rate": 0.5,
+                        "kda": 2.42
+                    },
+                    {
+                        "name": "Corki",
+                        "count": 49,
+                        "pick_rate": 3.4,
+                        "win_rate": 57.1,
+                        "ban_rate": 1.7,
+                        "kda": 2.66
+                    },
+                    {
+                        "name": "Mel",
+                        "count": 46,
+                        "pick_rate": 3.2,
+                        "win_rate": 41.3,
+                        "ban_rate": 31.4,
+                        "kda": 3.25
+                    },
+                    {
+                        "name": "Smolder",
+                        "count": 44,
+                        "pick_rate": 3.0,
+                        "win_rate": 54.5,
+                        "ban_rate": 2.6,
+                        "kda": 2.34
+                    },
+                    {
+                        "name": "Sivir",
+                        "count": 43,
+                        "pick_rate": 3.0,
+                        "win_rate": 67.4,
+                        "ban_rate": 1.5,
+                        "kda": 3.4
+                    },
+                    {
+                        "name": "Aphelios",
+                        "count": 40,
+                        "pick_rate": 2.7,
+                        "win_rate": 47.5,
+                        "ban_rate": 0.3,
+                        "kda": 1.87
+                    },
+                    {
+                        "name": "Lucian",
+                        "count": 36,
+                        "pick_rate": 2.5,
+                        "win_rate": 44.4,
+                        "ban_rate": 0.3,
+                        "kda": 2.19
+                    },
+                    {
+                        "name": "Ziggs",
+                        "count": 30,
+                        "pick_rate": 2.1,
+                        "win_rate": 56.7,
+                        "ban_rate": 0.8,
+                        "kda": 3.08
+                    }
+                ],
+                "UTILITY": [
+                    {
+                        "name": "Nautilus",
+                        "count": 153,
+                        "pick_rate": 10.5,
+                        "win_rate": 49.0,
+                        "ban_rate": 4.4,
+                        "kda": 2.22
+                    },
+                    {
+                        "name": "Alistar",
+                        "count": 122,
+                        "pick_rate": 8.4,
+                        "win_rate": 43.4,
+                        "ban_rate": 1.6,
+                        "kda": 2.41
+                    },
+                    {
+                        "name": "Rell",
+                        "count": 114,
+                        "pick_rate": 7.8,
+                        "win_rate": 50.9,
+                        "ban_rate": 2.7,
+                        "kda": 3.25
+                    },
+                    {
+                        "name": "Bard",
+                        "count": 110,
+                        "pick_rate": 7.5,
+                        "win_rate": 52.7,
+                        "ban_rate": 53.3,
+                        "kda": 3.21
+                    },
+                    {
+                        "name": "Karma",
+                        "count": 77,
+                        "pick_rate": 5.3,
+                        "win_rate": 45.5,
+                        "ban_rate": 4.6,
+                        "kda": 3.15
+                    },
+                    {
+                        "name": "Rakan",
+                        "count": 72,
+                        "pick_rate": 4.9,
+                        "win_rate": 54.2,
+                        "ban_rate": 1.1,
+                        "kda": 3.48
+                    },
+                    {
+                        "name": "Pyke",
+                        "count": 70,
+                        "pick_rate": 4.8,
+                        "win_rate": 57.1,
+                        "ban_rate": 45.8,
+                        "kda": 2.45
+                    },
+                    {
+                        "name": "Janna",
+                        "count": 64,
+                        "pick_rate": 4.4,
+                        "win_rate": 51.6,
+                        "ban_rate": 10.7,
+                        "kda": 4.31
+                    },
+                    {
+                        "name": "Leona",
+                        "count": 62,
+                        "pick_rate": 4.3,
+                        "win_rate": 59.7,
+                        "ban_rate": 1.2,
+                        "kda": 2.34
+                    },
+                    {
+                        "name": "Neeko",
+                        "count": 59,
+                        "pick_rate": 4.0,
+                        "win_rate": 39.0,
+                        "ban_rate": 2.7,
+                        "kda": 2.28
+                    },
+                    {
+                        "name": "Poppy",
+                        "count": 57,
+                        "pick_rate": 3.9,
+                        "win_rate": 61.4,
+                        "ban_rate": 15.7,
+                        "kda": 2.94
+                    },
+                    {
+                        "name": "Braum",
+                        "count": 49,
+                        "pick_rate": 3.4,
+                        "win_rate": 46.9,
+                        "ban_rate": 2.7,
+                        "kda": 2.72
+                    },
+                    {
+                        "name": "Elise",
+                        "count": 42,
+                        "pick_rate": 2.9,
+                        "win_rate": 69.0,
+                        "ban_rate": 4.3,
+                        "kda": 2.83
+                    },
+                    {
+                        "name": "Blitzcrank",
+                        "count": 36,
+                        "pick_rate": 2.5,
+                        "win_rate": 47.2,
+                        "ban_rate": 2.7,
+                        "kda": 2.71
+                    },
+                    {
+                        "name": "Thresh",
+                        "count": 30,
+                        "pick_rate": 2.1,
+                        "win_rate": 43.3,
+                        "ban_rate": 0.4,
+                        "kda": 2.23
+                    }
+                ]
+            },
+            "patch": {
+                "TOP": [
+                    {
+                        "name": "KSante",
+                        "count": 10,
+                        "pick_rate": 6.8,
+                        "win_rate": 70.0,
+                        "ban_rate": 7.4,
+                        "kda": 3.56
+                    },
+                    {
+                        "name": "Zaahen",
+                        "count": 8,
+                        "pick_rate": 5.4,
+                        "win_rate": 25.0,
+                        "ban_rate": 64.9,
+                        "kda": 1.0
+                    },
+                    {
+                        "name": "Ambessa",
+                        "count": 8,
+                        "pick_rate": 5.4,
+                        "win_rate": 75.0,
+                        "ban_rate": 41.2,
+                        "kda": 2.34
+                    },
+                    {
+                        "name": "Sion",
+                        "count": 7,
+                        "pick_rate": 4.7,
+                        "win_rate": 28.6,
+                        "ban_rate": 2.0,
+                        "kda": 1.04
+                    },
+                    {
+                        "name": "Jax",
+                        "count": 7,
+                        "pick_rate": 4.7,
+                        "win_rate": 28.6,
+                        "ban_rate": 13.5,
+                        "kda": 1.66
+                    },
+                    {
+                        "name": "Fiora",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 50.0,
+                        "ban_rate": 8.1,
+                        "kda": 1.8
+                    },
+                    {
+                        "name": "Gangplank",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 60.0,
+                        "ban_rate": 0.7,
+                        "kda": 1.7
+                    },
+                    {
+                        "name": "Rumble",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 60.0,
+                        "ban_rate": 11.5,
+                        "kda": 1.58
+                    },
+                    {
+                        "name": "Urgot",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 40.0,
+                        "ban_rate": 0.7,
+                        "kda": 1.9
+                    },
+                    {
+                        "name": "Vayne",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 80.0,
+                        "ban_rate": 6.1,
+                        "kda": 2.11
+                    },
+                    {
+                        "name": "Jayce",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 100.0,
+                        "ban_rate": 7.4,
+                        "kda": 2.79
+                    },
+                    {
+                        "name": "Riven",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 60.0,
+                        "ban_rate": 12.2,
+                        "kda": 2.17
+                    },
+                    {
+                        "name": "Renekton",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 50.0,
+                        "ban_rate": 4.1,
+                        "kda": 1.52
+                    },
+                    {
+                        "name": "Camille",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 50.0,
+                        "ban_rate": 0.0,
+                        "kda": 2.09
+                    },
+                    {
+                        "name": "Varus",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 75.0,
+                        "ban_rate": 1.4,
+                        "kda": 2.39
+                    }
+                ],
+                "JUNGLE": [
+                    {
+                        "name": "Nidalee",
+                        "count": 15,
+                        "pick_rate": 10.1,
+                        "win_rate": 46.7,
+                        "ban_rate": 8.1,
+                        "kda": 2.41
+                    },
+                    {
+                        "name": "Sylas",
+                        "count": 12,
+                        "pick_rate": 8.1,
+                        "win_rate": 50.0,
+                        "ban_rate": 31.1,
+                        "kda": 2.95
+                    },
+                    {
+                        "name": "JarvanIV",
+                        "count": 12,
+                        "pick_rate": 8.1,
+                        "win_rate": 66.7,
+                        "ban_rate": 2.0,
+                        "kda": 4.88
+                    },
+                    {
+                        "name": "Aatrox",
+                        "count": 10,
+                        "pick_rate": 6.8,
+                        "win_rate": 50.0,
+                        "ban_rate": 12.2,
+                        "kda": 2.64
+                    },
+                    {
+                        "name": "Hecarim",
+                        "count": 8,
+                        "pick_rate": 5.4,
+                        "win_rate": 37.5,
+                        "ban_rate": 0.0,
+                        "kda": 2.57
+                    },
+                    {
+                        "name": "Viego",
+                        "count": 8,
+                        "pick_rate": 5.4,
+                        "win_rate": 37.5,
+                        "ban_rate": 0.0,
+                        "kda": 2.81
+                    },
+                    {
+                        "name": "Diana",
+                        "count": 8,
+                        "pick_rate": 5.4,
+                        "win_rate": 37.5,
+                        "ban_rate": 6.8,
+                        "kda": 2.21
+                    },
+                    {
+                        "name": "Ambessa",
+                        "count": 7,
+                        "pick_rate": 4.7,
+                        "win_rate": 42.9,
+                        "ban_rate": 41.2,
+                        "kda": 3.35
+                    },
+                    {
+                        "name": "Qiyana",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 83.3,
+                        "ban_rate": 80.4,
+                        "kda": 2.95
+                    },
+                    {
+                        "name": "LeeSin",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 60.0,
+                        "ban_rate": 4.1,
+                        "kda": 5.33
+                    },
+                    {
+                        "name": "Talon",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 60.0,
+                        "ban_rate": 41.9,
+                        "kda": 7.5
+                    },
+                    {
+                        "name": "DrMundo",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 75.0,
+                        "ban_rate": 0.0,
+                        "kda": 4.15
+                    },
+                    {
+                        "name": "Vi",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 25.0,
+                        "ban_rate": 0.7,
+                        "kda": 2.85
+                    },
+                    {
+                        "name": "Chogath",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 25.0,
+                        "ban_rate": 1.4,
+                        "kda": 1.39
+                    },
+                    {
+                        "name": "Ekko",
+                        "count": 3,
+                        "pick_rate": 2.0,
+                        "win_rate": 66.7,
+                        "ban_rate": 3.4,
+                        "kda": 3.17
+                    }
+                ],
+                "MIDDLE": [
+                    {
+                        "name": "Ahri",
+                        "count": 9,
+                        "pick_rate": 6.1,
+                        "win_rate": 33.3,
+                        "ban_rate": 3.4,
+                        "kda": 4.3
+                    },
+                    {
+                        "name": "Taliyah",
+                        "count": 8,
+                        "pick_rate": 5.4,
+                        "win_rate": 50.0,
+                        "ban_rate": 3.4,
+                        "kda": 3.15
+                    },
+                    {
+                        "name": "Akali",
+                        "count": 8,
+                        "pick_rate": 5.4,
+                        "win_rate": 62.5,
+                        "ban_rate": 22.3,
+                        "kda": 3.78
+                    },
+                    {
+                        "name": "Malzahar",
+                        "count": 8,
+                        "pick_rate": 5.4,
+                        "win_rate": 62.5,
+                        "ban_rate": 4.1,
+                        "kda": 2.73
+                    },
+                    {
+                        "name": "Orianna",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 66.7,
+                        "ban_rate": 5.4,
+                        "kda": 3.04
+                    },
+                    {
+                        "name": "Yone",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 33.3,
+                        "ban_rate": 2.0,
+                        "kda": 1.49
+                    },
+                    {
+                        "name": "Zed",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 33.3,
+                        "ban_rate": 16.2,
+                        "kda": 2.84
+                    },
+                    {
+                        "name": "Zoe",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 66.7,
+                        "ban_rate": 3.4,
+                        "kda": 3.61
+                    },
+                    {
+                        "name": "Ekko",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 75.0,
+                        "ban_rate": 3.4,
+                        "kda": 6.8
+                    },
+                    {
+                        "name": "Quinn",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 25.0,
+                        "ban_rate": 16.2,
+                        "kda": 1.43
+                    },
+                    {
+                        "name": "Talon",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 100.0,
+                        "ban_rate": 41.9,
+                        "kda": 4.43
+                    },
+                    {
+                        "name": "Jayce",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 75.0,
+                        "ban_rate": 7.4,
+                        "kda": 3.2
+                    },
+                    {
+                        "name": "Irelia",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 75.0,
+                        "ban_rate": 9.5,
+                        "kda": 1.81
+                    },
+                    {
+                        "name": "Sylas",
+                        "count": 3,
+                        "pick_rate": 2.0,
+                        "win_rate": 33.3,
+                        "ban_rate": 31.1,
+                        "kda": 1.68
+                    },
+                    {
+                        "name": "Cassiopeia",
+                        "count": 3,
+                        "pick_rate": 2.0,
+                        "win_rate": 66.7,
+                        "ban_rate": 2.7,
+                        "kda": 2.88
+                    }
+                ],
+                "BOTTOM": [
+                    {
+                        "name": "Kaisa",
+                        "count": 18,
+                        "pick_rate": 12.2,
+                        "win_rate": 50.0,
+                        "ban_rate": 6.1,
+                        "kda": 2.53
+                    },
+                    {
+                        "name": "MissFortune",
+                        "count": 12,
+                        "pick_rate": 8.1,
+                        "win_rate": 58.3,
+                        "ban_rate": 20.9,
+                        "kda": 2.3
+                    },
+                    {
+                        "name": "Caitlyn",
+                        "count": 12,
+                        "pick_rate": 8.1,
+                        "win_rate": 58.3,
+                        "ban_rate": 0.7,
+                        "kda": 2.72
+                    },
+                    {
+                        "name": "Yunara",
+                        "count": 11,
+                        "pick_rate": 7.4,
+                        "win_rate": 36.4,
+                        "ban_rate": 7.4,
+                        "kda": 1.97
+                    },
+                    {
+                        "name": "Corki",
+                        "count": 9,
+                        "pick_rate": 6.1,
+                        "win_rate": 44.4,
+                        "ban_rate": 1.4,
+                        "kda": 1.86
+                    },
+                    {
+                        "name": "Jhin",
+                        "count": 8,
+                        "pick_rate": 5.4,
+                        "win_rate": 50.0,
+                        "ban_rate": 0.0,
+                        "kda": 3.77
+                    },
+                    {
+                        "name": "Aphelios",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 66.7,
+                        "ban_rate": 0.0,
+                        "kda": 2.55
+                    },
+                    {
+                        "name": "Mel",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 50.0,
+                        "ban_rate": 48.0,
+                        "kda": 4.84
+                    },
+                    {
+                        "name": "Tristana",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 66.7,
+                        "ban_rate": 2.0,
+                        "kda": 3.76
+                    },
+                    {
+                        "name": "Swain",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 66.7,
+                        "ban_rate": 0.0,
+                        "kda": 4.76
+                    },
+                    {
+                        "name": "Ezreal",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 0.0,
+                        "ban_rate": 3.4,
+                        "kda": 1.52
+                    },
+                    {
+                        "name": "Ashe",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 60.0,
+                        "ban_rate": 0.0,
+                        "kda": 3.26
+                    },
+                    {
+                        "name": "Smolder",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 25.0,
+                        "ban_rate": 1.4,
+                        "kda": 1.5
+                    },
+                    {
+                        "name": "Sivir",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 100.0,
+                        "ban_rate": 0.0,
+                        "kda": 7.5
+                    },
+                    {
+                        "name": "Twitch",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 75.0,
+                        "ban_rate": 0.0,
+                        "kda": 2.44
+                    }
+                ],
+                "UTILITY": [
+                    {
+                        "name": "Elise",
+                        "count": 19,
+                        "pick_rate": 12.8,
+                        "win_rate": 78.9,
+                        "ban_rate": 4.1,
+                        "kda": 3.9
+                    },
+                    {
+                        "name": "Nautilus",
+                        "count": 15,
+                        "pick_rate": 10.1,
+                        "win_rate": 60.0,
+                        "ban_rate": 3.4,
+                        "kda": 2.74
+                    },
+                    {
+                        "name": "Karma",
+                        "count": 11,
+                        "pick_rate": 7.4,
+                        "win_rate": 54.5,
+                        "ban_rate": 7.4,
+                        "kda": 3.85
+                    },
+                    {
+                        "name": "Alistar",
+                        "count": 11,
+                        "pick_rate": 7.4,
+                        "win_rate": 54.5,
+                        "ban_rate": 2.0,
+                        "kda": 2.64
+                    },
+                    {
+                        "name": "Rell",
+                        "count": 8,
+                        "pick_rate": 5.4,
+                        "win_rate": 25.0,
+                        "ban_rate": 1.4,
+                        "kda": 2.91
+                    },
+                    {
+                        "name": "Bard",
+                        "count": 7,
+                        "pick_rate": 4.7,
+                        "win_rate": 42.9,
+                        "ban_rate": 52.0,
+                        "kda": 2.37
+                    },
+                    {
+                        "name": "Neeko",
+                        "count": 7,
+                        "pick_rate": 4.7,
+                        "win_rate": 28.6,
+                        "ban_rate": 7.4,
+                        "kda": 2.93
+                    },
+                    {
+                        "name": "Lux",
+                        "count": 7,
+                        "pick_rate": 4.7,
+                        "win_rate": 71.4,
+                        "ban_rate": 0.0,
+                        "kda": 2.9
+                    },
+                    {
+                        "name": "Rakan",
+                        "count": 6,
+                        "pick_rate": 4.1,
+                        "win_rate": 50.0,
+                        "ban_rate": 0.7,
+                        "kda": 3.91
+                    },
+                    {
+                        "name": "Braum",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 40.0,
+                        "ban_rate": 0.0,
+                        "kda": 2.65
+                    },
+                    {
+                        "name": "Thresh",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 40.0,
+                        "ban_rate": 0.7,
+                        "kda": 2.03
+                    },
+                    {
+                        "name": "Janna",
+                        "count": 5,
+                        "pick_rate": 3.4,
+                        "win_rate": 40.0,
+                        "ban_rate": 6.1,
+                        "kda": 2.8
+                    },
+                    {
+                        "name": "Pyke",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 50.0,
+                        "ban_rate": 42.6,
+                        "kda": 1.62
+                    },
+                    {
+                        "name": "Sona",
+                        "count": 4,
+                        "pick_rate": 2.7,
+                        "win_rate": 75.0,
+                        "ban_rate": 0.7,
+                        "kda": 3.52
+                    },
+                    {
+                        "name": "Leona",
+                        "count": 3,
+                        "pick_rate": 2.0,
+                        "win_rate": 66.7,
+                        "ban_rate": 2.0,
+                        "kda": 3.22
+                    }
+                ]
+            }
+        }
+    }
+}
