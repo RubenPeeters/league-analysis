@@ -12,6 +12,8 @@
             --text: #e0e0e0;
             --accent: #00d26a;
             --border: #333;
+            --muted: #888;
+            --danger: #ff4d4d;
         }
 
         body {
@@ -22,22 +24,64 @@
             padding: 40px 20px;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
+        /* HEADER & INFO CARD */
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto 40px auto;
+            flex-wrap: wrap;
+            gap: 20px;
         }
 
-        h1 {
+        .title-section h1 {
             margin: 0;
+            color: var(--accent);
+            font-size: 2.2rem;
+        }
+
+        .title-section .subtitle {
+            color: var(--muted);
+            margin-top: 5px;
+            font-size: 1rem;
+        }
+
+        .info-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            padding: 15px 25px;
+            border-radius: 10px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--muted);
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .highlight {
             color: var(--accent);
         }
 
-        .subtitle {
-            color: #888;
-            margin-top: 5px;
-            font-size: 0.9em;
-        }
-
+        /* CONTROLS */
         .controls {
             text-align: center;
             margin-bottom: 30px;
@@ -66,55 +110,69 @@
             background: #333;
         }
 
+        /* GRIDS & TABLES */
         .grid-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            max-width: 1200px;
+            gap: 25px;
+            max-width: 1400px;
             margin: 0 auto;
         }
 
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             .grid-container {
                 grid-template-columns: 1fr;
+            }
+
+            .header-container {
+                justify-content: center;
+                text-align: center;
             }
         }
 
         .region-card {
             background: var(--card);
             border-radius: 12px;
-            padding: 20px;
+            padding: 0;
             border: 1px solid var(--border);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
         }
 
-        .region-title {
+        .region-header {
+            background: #252525;
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
             text-align: center;
-            color: #fff;
-            margin-top: 0;
-            border-bottom: 2px solid var(--border);
-            padding-bottom: 15px;
-            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            letter-spacing: 1px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
 
         th {
-            text-align: left;
-            color: #888;
-            padding: 10px;
-            font-size: 0.8em;
+            text-align: right;
+            color: var(--muted);
+            padding: 12px 15px;
+            font-size: 0.75em;
             text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            cursor: help;
+        }
+
+        th:nth-child(2) {
+            text-align: left;
         }
 
         td {
-            padding: 12px 10px;
+            padding: 10px 15px;
             border-bottom: 1px solid #2a2a2a;
+            text-align: right;
+            vertical-align: middle;
         }
 
         tr:last-child td {
@@ -125,13 +183,14 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            font-weight: 500;
+            font-weight: 600;
+            text-align: left;
+            font-size: 1rem;
         }
 
-        /* Fix for Ambessa/New champs: Default bg if image missing */
         .champ-img {
-            width: 36px;
-            height: 36px;
+            width: 38px;
+            height: 38px;
             border-radius: 6px;
             border: 1px solid #444;
             background: #000;
@@ -140,28 +199,50 @@
 
         .stat-cell {
             font-family: 'Consolas', monospace;
-            font-size: 1em;
+            font-size: 1.05em;
         }
 
         .win-high {
-            color: #00d26a;
-        }
-
-        .win-avg {
-            color: #e0e0e0;
+            color: var(--accent);
         }
 
         .win-low {
-            color: #ff4d4d;
+            color: var(--danger);
+        }
+
+        .ban-high {
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        .kda-great {
+            color: var(--accent);
         }
     </style>
 </head>
 
 <body>
 
-    <div class="header">
-        <h1>Top Jungle Picks</h1>
-        <div class="subtitle">Challenger Ladder • KR vs EUW</div>
+    <div class="header-container">
+        <div class="title-section">
+            <h1>Jungle Meta</h1>
+            <div class="subtitle">Challenger Ladder • KR vs EUW</div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-item">
+                <span class="info-label">Patch</span>
+                <span class="info-value highlight" id="meta-patch">--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Games Analyzed</span>
+                <span class="info-value" id="meta-games">--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Last Updated</span>
+                <span class="info-value" style="font-size: 0.9rem;" id="meta-updated">--</span>
+            </div>
+        </div>
     </div>
 
     <div class="controls">
@@ -171,14 +252,16 @@
 
     <div class="grid-container">
         <div class="region-card">
-            <h2 class="region-title">🇰🇷 Korea (KR)</h2>
+            <div class="region-header">🇰🇷 KOREA (KR)</div>
             <table id="table-kr">
                 <thead>
                     <tr>
-                        <th width="10%">#</th>
-                        <th>Champion</th>
-                        <th width="20%">Pick %</th>
-                        <th width="20%">Win %</th>
+                        <th width="5%">#</th>
+                        <th style="text-align:left;">Champion</th>
+                        <th title="Pick Rate">Pick</th>
+                        <th title="Ban Rate">Ban</th>
+                        <th title="Win Rate">Win</th>
+                        <th title="Average KDA">KDA</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -186,14 +269,16 @@
         </div>
 
         <div class="region-card">
-            <h2 class="region-title">🇪🇺 Europe West (EUW)</h2>
+            <div class="region-header">🇪🇺 EUROPE WEST (EUW)</div>
             <table id="table-euw1">
                 <thead>
                     <tr>
-                        <th width="10%">#</th>
-                        <th>Champion</th>
-                        <th width="20%">Pick %</th>
-                        <th width="20%">Win %</th>
+                        <th width="5%">#</th>
+                        <th style="text-align:left;">Champion</th>
+                        <th title="Pick Rate">Pick</th>
+                        <th title="Ban Rate">Ban</th>
+                        <th title="Win Rate">Win</th>
+                        <th title="Average KDA">KDA</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -203,55 +288,55 @@
 
     <script>
         let globalData = {};
-        // Use a recent patch version to ensure new champs (Ambessa) have images
         const DDRAGON_VER = "14.23.1";
 
         function renderTable(regionKey, timeFrame) {
-            // 1. SELECT THE TABLE BODY
-            // This looks for ID #table-kr or #table-euw1
             const table = document.getElementById(`table-${regionKey}`);
-
-            if (!table) {
-                console.error(`HTML Error: Could not find table with id="table-${regionKey}"`);
-                return;
-            }
+            if (!table) return;
 
             const tbody = table.querySelector('tbody');
             tbody.innerHTML = '';
 
-            // 2. CHECK DATA
-            if (!globalData[regionKey] || !globalData[regionKey][timeFrame] || globalData[regionKey][timeFrame].length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px; color:#666;">No data available.</td></tr>';
+            // Safety Checks for Data
+            if (!globalData.regions || !globalData.regions[regionKey] || !globalData.regions[regionKey][timeFrame]) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:#666;">No data available.</td></tr>';
                 return;
             }
 
-            const data = globalData[regionKey][timeFrame];
+            const data = globalData.regions[regionKey][timeFrame];
 
-            // 3. RENDER ROWS
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:#666;">No games recorded yet.</td></tr>';
+                return;
+            }
+
             data.forEach((champ, index) => {
-                let wrClass = 'win-avg';
+                // Color Logic
+                let wrClass = '';
                 if (champ.win_rate >= 52) wrClass = 'win-high';
                 if (champ.win_rate < 48) wrClass = 'win-low';
 
-                // Clean up champion names for images (Remove spaces/apostrophes if needed)
-                // e.g. "Lee Sin" -> "LeeSin" is usually handled by API, but "Bel'Veth" -> "Belveth" might need help.
-                // Riot API usually returns "LeeSin", "Belveth" correctly.
-                const imgName = champ.name;
+                let banClass = '';
+                if (champ.ban_rate >= 20) banClass = 'ban-high';
+
+                let kdaClass = '';
+                if (champ.kda >= 3.0) kdaClass = 'kda-great';
 
                 const html = `
                 <tr>
-                    <td style="color:#666; font-weight:bold;">${index + 1}</td>
+                    <td style="color:#666; font-weight:bold; text-align:center;">${index + 1}</td>
                     <td>
                         <div class="champ-flex">
-                            <img src="https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/champion/${imgName}.png" 
+                            <img src="https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/champion/${champ.name}.png" 
                                  class="champ-img" 
-                                 alt="${champ.name}"
                                  onerror="this.src='https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/profileicon/29.png'">
                             <span>${champ.name}</span>
                         </div>
                     </td>
                     <td class="stat-cell">${champ.pick_rate}%</td>
+                    <td class="stat-cell ${banClass}">${champ.ban_rate}%</td>
                     <td class="stat-cell ${wrClass}">${champ.win_rate}%</td>
+                    <td class="stat-cell ${kdaClass}">${champ.kda}</td>
                 </tr>
             `;
                 tbody.insertAdjacentHTML('beforeend', html);
@@ -259,30 +344,42 @@
         }
 
         function setView(view) {
-            // Toggle Active Class
+            // Toggle Buttons
             document.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${view}`).classList.add('active');
 
-            // Render Tables
-            // We pass the exact keys found in your JSON: "kr" and "euw1"
+            // Update Tables
             renderTable('kr', view);
             renderTable('euw1', view);
         }
 
-        // Load Data
+        function updateMetaInfo() {
+            if (!globalData.meta) return;
+
+            // Format Numbers
+            const totalGames = globalData.meta.total_games.toLocaleString();
+            const patchGames = globalData.meta.patch_games.toLocaleString();
+
+            // Update Info Card
+            document.getElementById('meta-games').innerText = totalGames;
+            document.getElementById('meta-patch').innerText = globalData.meta.current_patch;
+            document.getElementById('meta-updated').innerText = globalData.meta.last_updated;
+
+            // Update Button Text with Count
+            document.getElementById('btn-patch').innerText = `Current Patch (${patchGames})`;
+        }
+
+        // Initialize
         fetch('data.json')
-            .then(res => {
-                if (!res.ok) throw new Error("HTTP error " + res.status);
-                return res.json();
-            })
+            .then(res => res.json())
             .then(data => {
                 globalData = data;
-                console.log("Data loaded successfully:", globalData); // Debug log
-                setView('patch'); // Initial render
+                updateMetaInfo();
+                setView('patch');
             })
             .catch(err => {
-                console.error("Error loading JSON:", err);
-                document.body.insertAdjacentHTML('afterbegin', `<div style="background:red; color:white; padding:10px; text-align:center;">Error: ${err.message}</div>`);
+                console.error("Error:", err);
+                document.querySelector('.info-card').innerHTML = `<span style="color:red">Error: Could not load data.json</span>`;
             });
     </script>
 
