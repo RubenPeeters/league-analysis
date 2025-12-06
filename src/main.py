@@ -19,12 +19,10 @@ logger = logging.getLogger(__name__)
 # --- 2. CONFIGURATION ---
 API_KEY = os.getenv("RIOT_API_KEY")
 REGIONS = [("kr", "Korea"), ("euw1", "Europe West")]
-# Valid Riot API Roles
 VALID_ROLES = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]
 PLAYER_COUNT = int(os.getenv("PLAYER_COUNT", 10))
 MATCH_HISTORY_COUNT = 100
 
-# Path Setup
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(SCRIPT_DIR, "..", "data")
 if not os.path.exists(DATA_FOLDER):
@@ -86,14 +84,10 @@ def get_latest_patch(db):
     all_patches = set()
     for r in db:
         for m in db[r].values():
-            # SAFETY CHECK: If the match dict is empty, skip it
             if not m:
                 continue
-
-            # Get the first available role key (e.g., 'JUNGLE') to find the patch
             first_role = next(iter(m))
             all_patches.add(m[first_role]["patch"])
-
     if not all_patches:
         return "14.1"
 
@@ -167,16 +161,21 @@ def fetch_data():
                             info = match_detail["info"]
                             version = get_short_version(info["gameVersion"])
                             match_bans = extract_bans(info)
-
-                            # --- ATOMIC SAVE FIX ---
                             temp_match_data = {}
 
                             for p in info["participants"]:
                                 champ_id_to_name[p["championId"]] = p["championName"]
                                 role = p["teamPosition"]
+                                # CAPTURE PLAYER NAME (Prioritize RiotID, fallback to SummonerName)
+                                p_name = (
+                                    p.get("riotIdGameName")
+                                    or p.get("summonerName")
+                                    or "Unknown"
+                                )
 
                                 if role in VALID_ROLES:
                                     temp_match_data[role] = {
+                                        "name": p_name,  # <--- NEW FIELD
                                         "champ": p["championName"],
                                         "win": p["win"],
                                         "patch": version,
@@ -203,17 +202,13 @@ def fetch_data():
     logger.info("Generating Frontend JSON...")
     current_patch = get_latest_patch(db)
 
-    # Calculate Meta
     total_games = sum(len(db[r]) for r in db)
-
-    # Count patch games SAFELY
     patch_games = 0
     for r in db:
         for m in db[r].values():
             if not m:
                 continue
-            first_role = next(iter(m))
-            if m[first_role]["patch"] == current_patch:
+            if m[next(iter(m))]["patch"] == current_patch:
                 patch_games += 1
 
     frontend_data = {
@@ -224,12 +219,14 @@ def fetch_data():
             "current_patch": current_patch,
         },
         "regions": {},
+        "leaderboards": {},  # <--- NEW SECTION
     }
+
+    # Helper for Leaderboards
+    player_performance = {}  # {Champion: {PlayerName: {g, w, k, d, a, region}}}
 
     for region in db:
         frontend_data["regions"][region] = {"season": {}, "patch": {}}
-
-        # Initialize roles in frontend data
         for r in VALID_ROLES:
             frontend_data["regions"][region]["season"][r] = []
             frontend_data["regions"][region]["patch"][r] = []
@@ -244,9 +241,34 @@ def fetch_data():
             total = len(role_data)
             stats = {}
 
-            # Performance
+            # Aggregation Loop
             for d in role_data:
                 name = d["champ"]
+                p_name = d.get("name", "Unknown")
+
+                # Global Leaderboard Logic
+                if name not in player_performance:
+                    player_performance[name] = {}
+                if p_name not in player_performance[name]:
+                    player_performance[name][p_name] = {
+                        "g": 0,
+                        "w": 0,
+                        "k": 0,
+                        "d": 0,
+                        "a": 0,
+                        "r": region,
+                    }
+
+                # Add to leaderboard stats
+                pp = player_performance[name][p_name]
+                pp["g"] += 1
+                if d["win"]:
+                    pp["w"] += 1
+                pp["k"] += d.get("k", 0)
+                pp["d"] += d.get("d", 0)
+                pp["a"] += d.get("a", 0)
+
+                # Standard Stat Logic
                 if name not in stats:
                     stats[name] = {"g": 0, "w": 0, "k": 0, "d": 0, "a": 0, "b": 0}
                 s = stats[name]
@@ -257,12 +279,12 @@ def fetch_data():
                 s["d"] += d.get("d", 0)
                 s["a"] += d.get("a", 0)
 
-            # Bans
+            # Bans Logic (Same as before)
             for m in match_list:
                 if role_name in m:
-                    first_entry = m[role_name]
-                    if "bans" in first_entry:
-                        for bid in first_entry["bans"]:
+                    first = m[role_name]
+                    if "bans" in first:
+                        for bid in first["bans"]:
                             if bid in champ_id_to_name:
                                 bname = champ_id_to_name[bid]
                                 if bname not in stats:
@@ -276,17 +298,14 @@ def fetch_data():
                                     }
                                 stats[bname]["b"] += 1
 
-            # Finalize
             results = []
             for name, s in stats.items():
                 if s["g"] == 0 and s["b"] == 0:
                     continue
-
                 pick_rate = round((s["g"] / total * 100), 1)
                 ban_rate = round((s["b"] / total * 100), 1)
                 win_rate = round((s["w"] / s["g"] * 100), 1) if s["g"] > 0 else 0
                 kda = round((s["k"] + s["a"]) / (s["d"] if s["d"] > 0 else 1), 2)
-
                 if s["g"] > 0 or ban_rate > 1.0:
                     results.append(
                         {
@@ -300,23 +319,40 @@ def fetch_data():
                     )
             return sorted(results, key=lambda x: x["pick_rate"], reverse=True)[:15]
 
-        # Process per role
-        # 1. Filter out empty "Ghost" matches
+        # Filter Matches
         valid_matches = [m for m in matches if m]
-        season_matches = valid_matches
-
-        # 2. Safely filter for patch matches (FIXED LINE BELOW)
         patch_matches = [
             m for m in valid_matches if m[next(iter(m))]["patch"] == current_patch
         ]
 
         for role in VALID_ROLES:
             frontend_data["regions"][region]["season"][role] = get_role_stats(
-                season_matches, role
+                valid_matches, role
             )
             frontend_data["regions"][region]["patch"][role] = get_role_stats(
                 patch_matches, role
             )
+
+    # PROCESS LEADERBOARDS
+    for champ, players in player_performance.items():
+        leaderboard_list = []
+        for p_name, s in players.items():
+            kda = round((s["k"] + s["a"]) / (s["d"] if s["d"] > 0 else 1), 2)
+            wr = round((s["w"] / s["g"]) * 100, 1)
+            # Only include players with significant games on that champ (optional filter)
+            leaderboard_list.append(
+                {
+                    "player": p_name,
+                    "region": s["r"],
+                    "games": s["g"],
+                    "win_rate": wr,
+                    "kda": kda,
+                }
+            )
+        # Sort: Games Descending, then Win Rate
+        frontend_data["leaderboards"][champ] = sorted(
+            leaderboard_list, key=lambda x: (x["games"], x["win_rate"]), reverse=True
+        )
 
     with open(OUTPUT_FILE, "w") as f:
         json.dump(frontend_data, f)
