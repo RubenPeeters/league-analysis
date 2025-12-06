@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Meta Scout</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="header-container">
+        <div class="title-section">
+            <div style="display:flex; align-items:center; gap: 10px;">
+                <h1>Elite Meta Scout</h1>
+                <button class="info-icon-btn" onclick="toggleModal()" title="How this works">?</button>
+            </div>
+            <div class="subtitle">Tracking the Top 20 Challengers in KR & EUW</div>
+        </div>
+
+        <div class="role-selector">
+            <button class="role-btn" onclick="setRole('TOP')" title="Top Lane">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-top.svg"
+                    class="role-icon" alt="Top">
+                <span>TOP</span>
+            </button>
+            <button class="role-btn active" onclick="setRole('JUNGLE')" title="Jungle">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-jungle.svg"
+                    class="role-icon" alt="Jungle">
+                <span>JUNGLE</span>
+            </button>
+            <button class="role-btn" onclick="setRole('MIDDLE')" title="Mid Lane">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-middle.svg"
+                    class="role-icon" alt="Mid">
+                <span>MID</span>
+            </button>
+            <button class="role-btn" onclick="setRole('BOTTOM')" title="Bot Lane">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-bottom.svg"
+                    class="role-icon" alt="Bot">
+                <span>BOT</span>
+            </button>
+            <button class="role-btn" onclick="setRole('UTILITY')" title="Support">
+                <img src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-utility.svg"
+                    class="role-icon" alt="Support">
+                <span>SUP</span>
+            </button>
+        </div>
+
+        <div class="info-card">
+            <div class="info-item">
+                <span class="info-label">Patch</span>
+                <span class="info-value highlight" id="meta-patch">--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Games Analyzed</span>
+                <span class="info-value" id="meta-games">--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Last Updated</span>
+                <span class="info-value small-text" id="meta-updated">--</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="btn-patch" class="active" onclick="setTime('patch')">Current Patch</button>
+        <button id="btn-season" onclick="setTime('season')">Last 80 Games</button>
+    </div>
+
+    <div class="grid-container">
+        <div class="region-card">
+            <div class="region-header">🇰🇷 KOREA (KR)</div>
+            <table id="table-kr">
+                <thead>
+                    <tr>
+                        <th width="5%">#</th>
+                        <th class="align-left">Champion</th>
+                        <th title="Pick Rate">Pick</th>
+                        <th title="Ban Rate">Ban</th>
+                        <th title="Win Rate">Win</th>
+                        <th>KDA</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="region-card">
+            <div class="region-header">🇪🇺 EUROPE WEST (EUW)</div>
+            <table id="table-euw1">
+                <thead>
+                    <tr>
+                        <th width="5%">#</th>
+                        <th class="align-left">Champion</th>
+                        <th title="Pick Rate">Pick</th>
+                        <th title="Ban Rate">Ban</th>
+                        <th title="Win Rate">Win</th>
+                        <th>KDA</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="about-modal" class="modal-overlay" onclick="toggleModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="close-btn" onclick="toggleModal()">&times;</button>
+
+            <h2>Elite Meta Scout</h2>
+            <p class="modal-subtitle">Not a standard Tier List. A Leading Indicator.</p>
+
+            <div class="modal-grid">
+                <div class="modal-box">
+                    <h3>🔍 What is this?</h3>
+                    <p>Most sites track millions of games from Platinum+. That shows you what <strong>worked
+                            yesterday</strong> for the masses.</p>
+                    <p>We track the <strong>Top 20 Challengers</strong> in the world. This shows you what the Pros are
+                        <strong>playing today</strong>.</p>
+                </div>
+
+                <div class="modal-box">
+                    <h3>📊 How to read it?</h3>
+                    <ul>
+                        <li><strong style="color:var(--accent)">High Pick Rate:</strong> The "Meta" defined by Pros.
+                        </li>
+                        <li><strong style="color:var(--danger)">High Ban Rate:</strong> "God Tier" (Too strong to let
+                            through).</li>
+                        <li><strong>Low Win Rate?:</strong> Might be a "high skill ceiling" pick that Pros are
+                            practicing.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                Data sourced directly from Riot API (Challenger Ladder). Updated every 6 hours.
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
