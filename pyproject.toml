@@ -1,0 +1,11 @@
+[project]
+name = "top-players-league"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "python-dotenv>=1.2.1",
+    "riotwatcher>=3.3.1",
+    "tqdm>=4.67.1",
+]

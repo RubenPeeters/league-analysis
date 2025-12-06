@@ -1,0 +1,2028 @@
+{
+  "kr": {
+    "KR_7945978499": {
+      "champ": "JarvanIV",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764908062804
+    },
+    "KR_7944429484": {
+      "champ": "Vi",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764838677543
+    },
+    "KR_7944363144": {
+      "champ": "Viego",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764836040429
+    },
+    "KR_7944183695": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764829398656
+    },
+    "KR_7944120055": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764826220509
+    },
+    "KR_7943611449": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764782831091
+    },
+    "KR_7941256256": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764674086183
+    },
+    "KR_7941189457": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764671569731
+    },
+    "KR_7941119239": {
+      "champ": "Viego",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764668267022
+    },
+    "KR_7941084380": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764666491921
+    },
+    "KR_7940871870": {
+      "champ": "Hecarim",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764654855330
+    },
+    "KR_7940864386": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764654068598
+    },
+    "KR_7940821923": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764651510823
+    },
+    "KR_7940544873": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764609995814
+    },
+    "KR_7940500889": {
+      "champ": "Qiyana",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764606905781
+    },
+    "KR_7940385555": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764601571851
+    },
+    "KR_7939753849": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764580950145
+    },
+    "KR_7939684937": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764577459071
+    },
+    "KR_7939601093": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764572328404
+    },
+    "KR_7946404021": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764924150360
+    },
+    "KR_7946314846": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764921486572
+    },
+    "KR_7945262757": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764859650081
+    },
+    "KR_7945167144": {
+      "champ": "Jax",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764857336903
+    },
+    "KR_7944943217": {
+      "champ": "Qiyana",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764852635413
+    },
+    "KR_7944799199": {
+      "champ": "Talon",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764849428125
+    },
+    "KR_7944503618": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764841381784
+    },
+    "KR_7944451400": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764839415671
+    },
+    "KR_7944056585": {
+      "champ": "Graves",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764823737997
+    },
+    "KR_7943521479": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764778671722
+    },
+    "KR_7943467830": {
+      "champ": "Qiyana",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764776931082
+    },
+    "KR_7943391228": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764774274337
+    },
+    "KR_7943303044": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764772035071
+    },
+    "KR_7943201211": {
+      "champ": "Malphite",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764769786298
+    },
+    "KR_7943009010": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764765402178
+    },
+    "KR_7942329933": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764743261962
+    },
+    "KR_7942286071": {
+      "champ": "JarvanIV",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764740643470
+    },
+    "KR_7942257294": {
+      "champ": "XinZhao",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764739314718
+    },
+    "KR_7942202903": {
+      "champ": "Nidalee",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764736688858
+    },
+    "KR_7941874320": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764694867987
+    },
+    "KR_7944658866": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764846134091
+    },
+    "KR_7944416131": {
+      "champ": "Darius",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764837988406
+    },
+    "KR_7944248141": {
+      "champ": "Lillia",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764831743002
+    },
+    "KR_7939546733": {
+      "champ": "MonkeyKing",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764569659712
+    },
+    "KR_7934527652": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764322003237
+    },
+    "KR_7934488071": {
+      "champ": "Skarner",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764319725127
+    },
+    "KR_7934436471": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764317658201
+    },
+    "KR_7933159600": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764238989565
+    },
+    "KR_7933125128": {
+      "champ": "Qiyana",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764237189543
+    },
+    "KR_7933069793": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764234931495
+    },
+    "KR_7933012968": {
+      "champ": "Darius",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764232038620
+    },
+    "KR_7931922617": {
+      "champ": "Viego",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764156667979
+    },
+    "KR_7947813121": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764962066414
+    },
+    "KR_7947772225": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764959304612
+    },
+    "KR_7947732195": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764957371055
+    },
+    "KR_7947670702": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764955197696
+    },
+    "KR_7947528815": {
+      "champ": "Jayce",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764951087716
+    },
+    "KR_7947467630": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764949569295
+    },
+    "KR_7945619798": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764873765426
+    },
+    "KR_7945602333": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764872006705
+    },
+    "KR_7945573590": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764870410017
+    },
+    "KR_7945536101": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764867904742
+    },
+    "KR_7945470213": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764865437365
+    },
+    "KR_7945407473": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764863454490
+    },
+    "KR_7945318000": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764861108714
+    },
+    "KR_7943639545": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764784660023
+    },
+    "KR_7941952560": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764703106155
+    },
+    "KR_7941930103": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764699048426
+    },
+    "KR_7941893864": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764696967699
+    },
+    "KR_7941879159": {
+      "champ": "Jayce",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764695126327
+    },
+    "KR_7949104707": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765019904658
+    },
+    "KR_7949030274": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765017870213
+    },
+    "KR_7948930435": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1765015322409
+    },
+    "KR_7948857132": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765013165082
+    },
+    "KR_7948755609": {
+      "champ": "Nunu",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765010429908
+    },
+    "KR_7948695232": {
+      "champ": "Karthus",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765008609625
+    },
+    "KR_7948594613": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765005972988
+    },
+    "KR_7948506440": {
+      "champ": "Viego",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765003474212
+    },
+    "KR_7948428795": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1765001492322
+    },
+    "KR_7948343933": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764998934857
+    },
+    "KR_7948276767": {
+      "champ": "Vi",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764996703472
+    },
+    "KR_7947121048": {
+      "champ": "Belveth",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764942460472
+    },
+    "KR_7946999090": {
+      "champ": "Jayce",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764940164803
+    },
+    "KR_7946895186": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764938074032
+    },
+    "KR_7946799361": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764935984066
+    },
+    "KR_7946717240": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764933912748
+    },
+    "KR_7946646382": {
+      "champ": "Karthus",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764932056505
+    },
+    "KR_7946544393": {
+      "champ": "FiddleSticks",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764929157456
+    },
+    "KR_7946438208": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764925710266
+    },
+    "KR_7946374141": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764923147110
+    },
+    "KR_7948529136": {
+      "champ": "Evelynn",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765004096740
+    },
+    "KR_7946182292": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764916575649
+    },
+    "KR_7946143198": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764915060283
+    },
+    "KR_7946086694": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764913088423
+    },
+    "KR_7946055575": {
+      "champ": "Talon",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764911660729
+    },
+    "KR_7946004414": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764909217686
+    },
+    "KR_7945373921": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764862563429
+    },
+    "KR_7945285496": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764860129723
+    },
+    "KR_7945220207": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764858490266
+    },
+    "KR_7943566844": {
+      "champ": "Talon",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764780793985
+    },
+    "KR_7943471065": {
+      "champ": "Jayce",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764776726214
+    },
+    "KR_7943381923": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764774413004
+    },
+    "KR_7942612156": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764753930578
+    },
+    "KR_7941724025": {
+      "champ": "MasterYi",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764687748983
+    },
+    "KR_7941615948": {
+      "champ": "Qiyana",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764684721578
+    },
+    "KR_7941385956": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764678423240
+    },
+    "KR_7948667653": {
+      "champ": "Viego",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765008027494
+    },
+    "KR_7948459673": {
+      "champ": "Jax",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1765002309316
+    },
+    "KR_7948305186": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764997379835
+    },
+    "KR_7948042745": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764986514586
+    },
+    "KR_7947889480": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764972295252
+    },
+    "KR_7947513361": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764950523198
+    },
+    "KR_7947440066": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764948780408
+    },
+    "KR_7947284107": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764945623910
+    },
+    "KR_7947143819": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764943121933
+    },
+    "KR_7945413761": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764863748837
+    },
+    "KR_7945339484": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764861442069
+    },
+    "KR_7945058630": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764855173333
+    },
+    "KR_7944972215": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764853256092
+    },
+    "KR_7944862610": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764850970120
+    },
+    "KR_7944652885": {
+      "champ": "Talon",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764845916533
+    },
+    "KR_7943659192": {
+      "champ": "MonkeyKing",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764785618520
+    },
+    "KR_7947784471": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764960347613
+    },
+    "KR_7947720364": {
+      "champ": "XinZhao",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764956906907
+    },
+    "KR_7947659992": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764954970162
+    },
+    "KR_7947627438": {
+      "champ": "Kaisa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764953667278
+    },
+    "KR_7947336459": {
+      "champ": "MasterYi",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764946737868
+    },
+    "KR_7945641548": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764875206854
+    },
+    "KR_7945611306": {
+      "champ": "Jayce",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764872410627
+    },
+    "KR_7945577350": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764870417095
+    },
+    "KR_7945525063": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764867593312
+    },
+    "KR_7945455641": {
+      "champ": "FiddleSticks",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764865124793
+    },
+    "KR_7944888240": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764851478246
+    },
+    "KR_7943688051": {
+      "champ": "Belveth",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764787870812
+    },
+    "KR_7943637219": {
+      "champ": "Qiyana",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764784213666
+    },
+    "KR_7943600497": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764782209361
+    },
+    "KR_7948007428": {
+      "champ": "Belveth",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764984260818
+    },
+    "KR_7947983465": {
+      "champ": "MasterYi",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764982688930
+    },
+    "KR_7947965340": {
+      "champ": "Elise",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764981197131
+    },
+    "KR_7947823265": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764963173848
+    },
+    "KR_7947687549": {
+      "champ": "Belveth",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764955746614
+    },
+    "KR_7947588018": {
+      "champ": "Qiyana",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764952319825
+    },
+    "KR_7947498531": {
+      "champ": "Belveth",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764950253800
+    },
+    "KR_7947237734": {
+      "champ": "Jax",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764944911032
+    },
+    "KR_7947002887": {
+      "champ": "MasterYi",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764940436405
+    },
+    "KR_7945978933": {
+      "champ": "Belveth",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764908370351
+    },
+    "KR_7945954006": {
+      "champ": "MasterYi",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764906367553
+    },
+    "KR_7945882718": {
+      "champ": "MasterYi",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764902611232
+    },
+    "KR_7945850484": {
+      "champ": "Qiyana",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764900277127
+    },
+    "KR_7945799841": {
+      "champ": "Karthus",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764896908466
+    },
+    "KR_7945791210": {
+      "champ": "MasterYi",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764895347573
+    },
+    "KR_7945749623": {
+      "champ": "Belveth",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764891948587
+    },
+    "KR_7948955906": {
+      "champ": "Qiyana",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1765016100772
+    },
+    "KR_7948881734": {
+      "champ": "Elise",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765013972251
+    },
+    "KR_7947479349": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764949777485
+    },
+    "KR_7947355662": {
+      "champ": "JarvanIV",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764947211593
+    },
+    "KR_7947213389": {
+      "champ": "Kaisa",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764944332251
+    },
+    "KR_7946259688": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764919477448
+    },
+    "KR_7945490210": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764866107906
+    },
+    "KR_7943343498": {
+      "champ": "FiddleSticks",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764773162941
+    },
+    "KR_7943238695": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764770710925
+    },
+    "KR_7943162309": {
+      "champ": "Malphite",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764768898523
+    },
+    "KR_7941877452": {
+      "champ": "Jayce",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764695289776
+    },
+    "KR_7941843750": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764693439365
+    },
+    "KR_7941812238": {
+      "champ": "Graves",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764691421255
+    },
+    "KR_7941637607": {
+      "champ": "MonkeyKing",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764685236319
+    },
+    "KR_7941515198": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764681690968
+    }
+  },
+  "euw1": {
+    "EUW1_7625699310": {
+      "champ": "Viego",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764722769939
+    },
+    "EUW1_7625653805": {
+      "champ": "Talon",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764718603593
+    },
+    "EUW1_7624705689": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764664352283
+    },
+    "EUW1_7623614321": {
+      "champ": "Teemo",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764574458963
+    },
+    "EUW1_7622353248": {
+      "champ": "Evelynn",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764485196518
+    },
+    "EUW1_7621123107": {
+      "champ": "Nidalee",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764391545702
+    },
+    "EUW1_7620108235": {
+      "champ": "Talon",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764329938896
+    },
+    "EUW1_7618855025": {
+      "champ": "Viego",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764203950546
+    },
+    "EUW1_7617845711": {
+      "champ": "Rumble",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764137160604
+    },
+    "EUW1_7617801044": {
+      "champ": "Talon",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764122071761
+    },
+    "EUW1_7616835213": {
+      "champ": "Talon",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764069379362
+    },
+    "EUW1_7626980161": {
+      "champ": "DrMundo",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764798735331
+    },
+    "EUW1_7626893075": {
+      "champ": "Ekko",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764796366183
+    },
+    "EUW1_7625896692": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764758390129
+    },
+    "EUW1_7625541887": {
+      "champ": "Chogath",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764713121383
+    },
+    "EUW1_7625464471": {
+      "champ": "Chogath",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764710105802
+    },
+    "EUW1_7625074970": {
+      "champ": "Diana",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764695688095
+    },
+    "EUW1_7625015315": {
+      "champ": "Qiyana",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764692812049
+    },
+    "EUW1_7624956654": {
+      "champ": "JarvanIV",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764689102373
+    },
+    "EUW1_7624920785": {
+      "champ": "Karthus",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764686819447
+    },
+    "EUW1_7624759615": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764672469293
+    },
+    "EUW1_7624305078": {
+      "champ": "Jayce",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764621555862
+    },
+    "EUW1_7624020584": {
+      "champ": "Pantheon",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764610488267
+    },
+    "EUW1_7623937240": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764606720699
+    },
+    "EUW1_7623392587": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764540693292
+    },
+    "EUW1_7623340783": {
+      "champ": "Ekko",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764538647434
+    },
+    "EUW1_7623298723": {
+      "champ": "JarvanIV",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764537155891
+    },
+    "EUW1_7623000438": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764526745238
+    },
+    "EUW1_7622783792": {
+      "champ": "Shaco",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764517630006
+    },
+    "EUW1_7625662679": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764719017253
+    },
+    "EUW1_7625612031": {
+      "champ": "Qiyana",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764716211309
+    },
+    "EUW1_7624802378": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764677699129
+    },
+    "EUW1_7624784209": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764675644760
+    },
+    "EUW1_7624533572": {
+      "champ": "Zed",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764630206473
+    },
+    "EUW1_7624452035": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764626685584
+    },
+    "EUW1_7617786292": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764120157237
+    },
+    "EUW1_7617770464": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764117267334
+    },
+    "EUW1_7612502865": {
+      "champ": "Jayce",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1763766474937
+    },
+    "EUW1_7612411160": {
+      "champ": "Vi",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1763763302236
+    },
+    "EUW1_7612401971": {
+      "champ": "Zed",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1763762914928
+    },
+    "EUW1_7612326114": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1763760456441
+    },
+    "EUW1_7612233484": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1763757385624
+    },
+    "EUW1_7612184040": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1763755872291
+    },
+    "EUW1_7611894660": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1763744254649
+    },
+    "EUW1_7608233554": {
+      "champ": "Qiyana",
+      "win": true,
+      "patch": "15.22",
+      "timestamp": 1763488100646
+    },
+    "EUW1_7608154753": {
+      "champ": "Shaco",
+      "win": true,
+      "patch": "15.22",
+      "timestamp": 1763484580089
+    },
+    "EUW1_7608123638": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.22",
+      "timestamp": 1763483081540
+    },
+    "EUW1_7607828295": {
+      "champ": "Viego",
+      "win": true,
+      "patch": "15.22",
+      "timestamp": 1763427007555
+    },
+    "EUW1_7630618049": {
+      "champ": "Chogath",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765019148246
+    },
+    "EUW1_7630571948": {
+      "champ": "Zaahen",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1765016340644
+    },
+    "EUW1_7630542725": {
+      "champ": "JarvanIV",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1765014138887
+    },
+    "EUW1_7630516113": {
+      "champ": "JarvanIV",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765011946062
+    },
+    "EUW1_7630500973": {
+      "champ": "Graves",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1765010064906
+    },
+    "EUW1_7628032600": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764870709477
+    },
+    "EUW1_7627982605": {
+      "champ": "Ekko",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764869088565
+    },
+    "EUW1_7627917003": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764866957422
+    },
+    "EUW1_7627857790": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764864675811
+    },
+    "EUW1_7627780410": {
+      "champ": "Qiyana",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764861879417
+    },
+    "EUW1_7627730845": {
+      "champ": "Viego",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764859561483
+    },
+    "EUW1_7627687411": {
+      "champ": "Kindred",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764857730104
+    },
+    "EUW1_7627639157": {
+      "champ": "DrMundo",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764855339711
+    },
+    "EUW1_7627606875": {
+      "champ": "Viego",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764853405631
+    },
+    "EUW1_7627570152": {
+      "champ": "Elise",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764851646893
+    },
+    "EUW1_7627521429": {
+      "champ": "Malphite",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764848975396
+    },
+    "EUW1_7627489794": {
+      "champ": "JarvanIV",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764846506855
+    },
+    "EUW1_7627448949": {
+      "champ": "JarvanIV",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764843771988
+    },
+    "EUW1_7627404380": {
+      "champ": "JarvanIV",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764840558746
+    },
+    "EUW1_7626853442": {
+      "champ": "Nasus",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764795473584
+    },
+    "EUW1_7627469258": {
+      "champ": "Hecarim",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764845419486
+    },
+    "EUW1_7627443569": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764843156622
+    },
+    "EUW1_7627072956": {
+      "champ": "Riven",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764801767132
+    },
+    "EUW1_7626994380": {
+      "champ": "Jayce",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764799233040
+    },
+    "EUW1_7626930701": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764797250014
+    },
+    "EUW1_7626748751": {
+      "champ": "Talon",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764792644108
+    },
+    "EUW1_7626467277": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764784995530
+    },
+    "EUW1_7625867882": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764756604286
+    },
+    "EUW1_7625600358": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764715812517
+    },
+    "EUW1_7625551584": {
+      "champ": "Diana",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764713387546
+    },
+    "EUW1_7625520646": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764712177046
+    },
+    "EUW1_7625410175": {
+      "champ": "Khazix",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764708480646
+    },
+    "EUW1_7624983981": {
+      "champ": "Diana",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764690971878
+    },
+    "EUW1_7624874160": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764683699721
+    },
+    "EUW1_7630591140": {
+      "champ": "Viego",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1765017623031
+    },
+    "EUW1_7630551154": {
+      "champ": "DrMundo",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765015028225
+    },
+    "EUW1_7630129747": {
+      "champ": "Ekko",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764974246785
+    },
+    "EUW1_7630019274": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764971236985
+    },
+    "EUW1_7629900785": {
+      "champ": "DrMundo",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764967874853
+    },
+    "EUW1_7629671939": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764960645990
+    },
+    "EUW1_7628985964": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764928869550
+    },
+    "EUW1_7628583395": {
+      "champ": "Diana",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764886496366
+    },
+    "EUW1_7627463091": {
+      "champ": "RekSai",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764844827097
+    },
+    "EUW1_7627434442": {
+      "champ": "Belveth",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764843082743
+    },
+    "EUW1_7626417863": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764783348760
+    },
+    "EUW1_7626329953": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764780534696
+    },
+    "EUW1_7626230248": {
+      "champ": "Vi",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764776874458
+    },
+    "EUW1_7626028369": {
+      "champ": "RekSai",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764767455055
+    },
+    "EUW1_7626000724": {
+      "champ": "Hecarim",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764765522344
+    },
+    "EUW1_7625632758": {
+      "champ": "Chogath",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764717222191
+    },
+    "EUW1_7625043753": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764694070680
+    },
+    "EUW1_7624558542": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764631703297
+    },
+    "EUW1_7630183216": {
+      "champ": "Talon",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764976122545
+    },
+    "EUW1_7630078140": {
+      "champ": "XinZhao",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764972909300
+    },
+    "EUW1_7629923994": {
+      "champ": "Zaahen",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764968488223
+    },
+    "EUW1_7629581734": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764957340047
+    },
+    "EUW1_7629499411": {
+      "champ": "Rumble",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764954517499
+    },
+    "EUW1_7629443101": {
+      "champ": "Talon",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764952358241
+    },
+    "EUW1_7629382895": {
+      "champ": "Rengar",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764949955333
+    },
+    "EUW1_7629310065": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764946986116
+    },
+    "EUW1_7629254589": {
+      "champ": "Nidalee",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764944337993
+    },
+    "EUW1_7629189235": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764941458193
+    },
+    "EUW1_7629157907": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764939732676
+    },
+    "EUW1_7629121685": {
+      "champ": "Jax",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764937604848
+    },
+    "EUW1_7628815808": {
+      "champ": "Sejuani",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764897938389
+    },
+    "EUW1_7628788505": {
+      "champ": "Qiyana",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764895321743
+    },
+    "EUW1_7628740397": {
+      "champ": "Nidalee",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764892851469
+    },
+    "EUW1_7628710681": {
+      "champ": "Diana",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764890978383
+    },
+    "EUW1_7628665820": {
+      "champ": "Rengar",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764889092745
+    },
+    "EUW1_7628484880": {
+      "champ": "Naafiri",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764883576130
+    },
+    "EUW1_7628420459": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764881692583
+    },
+    "EUW1_7627191010": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764807203397
+    },
+    "EUW1_7627154738": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764805070251
+    },
+    "EUW1_7627115485": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764803194203
+    },
+    "EUW1_7626833680": {
+      "champ": "Karthus",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764794760568
+    },
+    "EUW1_7626769312": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764793273482
+    },
+    "EUW1_7626662042": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764790460370
+    },
+    "EUW1_7626151004": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764773355485
+    },
+    "EUW1_7623222941": {
+      "champ": "Hecarim",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764534640163
+    },
+    "EUW1_7623036289": {
+      "champ": "Udyr",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764528099011
+    },
+    "EUW1_7622931443": {
+      "champ": "Ekko",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764524042708
+    },
+    "EUW1_7622884752": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764521882955
+    },
+    "EUW1_7622833639": {
+      "champ": "Nunu",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764519739810
+    },
+    "EUW1_7622733505": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764515347816
+    },
+    "EUW1_7622689103": {
+      "champ": "Nunu",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764513600133
+    },
+    "EUW1_7622633185": {
+      "champ": "Nunu",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764511063024
+    },
+    "EUW1_7622592207": {
+      "champ": "Chogath",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764508885988
+    },
+    "EUW1_7622538850": {
+      "champ": "Zed",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764505610253
+    },
+    "EUW1_7622502694": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764503496786
+    },
+    "EUW1_7622467784": {
+      "champ": "Graves",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764500825218
+    },
+    "EUW1_7626176133": {
+      "champ": "Hecarim",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764774385938
+    },
+    "EUW1_7626094432": {
+      "champ": "Viego",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764770779717
+    },
+    "EUW1_7623498566": {
+      "champ": "Nidalee",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764546437119
+    },
+    "EUW1_7623451905": {
+      "champ": "Qiyana",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764543730387
+    },
+    "EUW1_7623401521": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764541119532
+    },
+    "EUW1_7623352528": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764539178421
+    },
+    "EUW1_7622930720": {
+      "champ": "Zyra",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764523742981
+    },
+    "EUW1_7622847206": {
+      "champ": "RekSai",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764520494326
+    },
+    "EUW1_7622691917": {
+      "champ": "JarvanIV",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764513651155
+    },
+    "EUW1_7622575298": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764508055918
+    },
+    "EUW1_7622480871": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764501926016
+    },
+    "EUW1_7622099490": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764455887640
+    },
+    "EUW1_7622025592": {
+      "champ": "Hecarim",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764453168484
+    },
+    "EUW1_7621949223": {
+      "champ": "JarvanIV",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764450539997
+    },
+    "EUW1_7621871409": {
+      "champ": "Sylas",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764447628825
+    },
+    "EUW1_7621747913": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764441898604
+    },
+    "EUW1_7630211431": {
+      "champ": "Nidalee",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764977158260
+    },
+    "EUW1_7630162646": {
+      "champ": "Hecarim",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764975275339
+    },
+    "EUW1_7628064635": {
+      "champ": "Khazix",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764871696482
+    },
+    "EUW1_7627960955": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764868476923
+    },
+    "EUW1_7627863367": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764865110485
+    },
+    "EUW1_7625638309": {
+      "champ": "Aatrox",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764717948412
+    },
+    "EUW1_7624526553": {
+      "champ": "LeeSin",
+      "win": true,
+      "patch": "15.23",
+      "timestamp": 1764629830720
+    },
+    "EUW1_7623219296": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.23",
+      "timestamp": 1764534550998
+    },
+    "EUW1_7606753056": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.22",
+      "timestamp": 1763340561418
+    },
+    "EUW1_7606730138": {
+      "champ": "Sylas",
+      "win": true,
+      "patch": "15.22",
+      "timestamp": 1763338328443
+    },
+    "EUW1_7606661712": {
+      "champ": "Nidalee",
+      "win": false,
+      "patch": "15.22",
+      "timestamp": 1763333406654
+    },
+    "EUW1_7606611426": {
+      "champ": "Jax",
+      "win": false,
+      "patch": "15.22",
+      "timestamp": 1763331400192
+    },
+    "EUW1_7606553117": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.22",
+      "timestamp": 1763328977969
+    },
+    "EUW1_7606484815": {
+      "champ": "Nidalee",
+      "win": false,
+      "patch": "15.22",
+      "timestamp": 1763326412189
+    },
+    "EUW1_7606423341": {
+      "champ": "LeeSin",
+      "win": false,
+      "patch": "15.22",
+      "timestamp": 1763324500927
+    },
+    "EUW1_7598430528": {
+      "champ": "Karthus",
+      "win": true,
+      "patch": "15.22",
+      "timestamp": 1762736816856
+    },
+    "EUW1_7598400655": {
+      "champ": "Graves",
+      "win": false,
+      "patch": "15.22",
+      "timestamp": 1762733633081
+    }
+  }
+}
