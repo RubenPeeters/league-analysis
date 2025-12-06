@@ -2023,6 +2023,102 @@
       "win": false,
       "patch": "15.22",
       "timestamp": 1762733633081
+    },
+    "EUW1_7630640153": {
+      "champ": "Hecarim",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1765020320336
+    },
+    "EUW1_7630566421": {
+      "champ": "Ambessa",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765016238911
+    },
+    "EUW1_7630539649": {
+      "champ": "Qiyana",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1765013702583
+    },
+    "EUW1_7629150506": {
+      "champ": "Karthus",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764939108887
+    },
+    "EUW1_7629097226": {
+      "champ": "Karthus",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764936475761
+    },
+    "EUW1_7629062549": {
+      "champ": "Aatrox",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764933966276
+    },
+    "EUW1_7629010126": {
+      "champ": "Ambessa",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764930582696
+    },
+    "EUW1_7627684357": {
+      "champ": "Qiyana",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764857661780
+    },
+    "EUW1_7627623931": {
+      "champ": "Viego",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764854440257
+    },
+    "EUW1_7627509762": {
+      "champ": "Viego",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764847836344
+    },
+    "EUW1_7627433573": {
+      "champ": "Zed",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764842405921
+    },
+    "EUW1_7627401246": {
+      "champ": "Khazix",
+      "win": false,
+      "patch": "15.24",
+      "timestamp": 1764839971355
+    },
+    "EUW1_7626000537": {
+      "champ": "Zed",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764765421573
+    },
+    "EUW1_7625955389": {
+      "champ": "JarvanIV",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764763012654
+    },
+    "EUW1_7625923667": {
+      "champ": "Teemo",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764760475742
+    },
+    "EUW1_7625883762": {
+      "champ": "Nidalee",
+      "win": true,
+      "patch": "15.24",
+      "timestamp": 1764757528510
     }
   }
 }
