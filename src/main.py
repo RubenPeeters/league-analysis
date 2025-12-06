@@ -22,7 +22,7 @@ REGIONS = [("kr", "Korea"), ("euw1", "Europe West")]
 # Valid Riot API Roles
 VALID_ROLES = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]
 PLAYER_COUNT = int(os.getenv("PLAYER_COUNT", 10))
-MATCH_HISTORY_COUNT = 20
+MATCH_HISTORY_COUNT = 100
 
 # Path Setup
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
