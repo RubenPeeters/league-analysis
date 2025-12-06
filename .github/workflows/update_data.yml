@@ -2,8 +2,8 @@ name: Update Jungle Meta
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
-  workflow_dispatch:
+    - cron: '0 */6 * * *' # Every 6 hours
+  workflow_dispatch:      # Manual trigger button
 
 permissions:
   contents: write
@@ -26,7 +26,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install riotwatcher python-dotenv requests
 
-      # 1. GENERATE THE DATA
+      # 1. GENERATE FRESH DATA
       - name: Run Data Generator
         env:
           RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
@@ -34,30 +34,35 @@ jobs:
           LOG_LEVEL: INFO
         run: python src/main.py
 
-      # 2. COMMIT THE NEW DATA BACK TO REPO (So you have history)
-      - name: Commit Data Changes
+      # 2. COMMIT DATA BACK TO MAIN (So you keep your history)
+      - name: Commit Data to Main
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
           git add data/match_database.json data/data.json
-          git commit -m "Auto-update data [skip ci]" || exit 0
+          # Only commit if there are changes
+          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update data [skip ci]"
           git push
 
-      # 3. ASSEMBLE THE SITE FOR DEPLOYMENT
-      # We create a temporary '_site' folder and move everything there.
+      # 3. ASSEMBLE THE SITE (The Magic Step)
       - name: Assemble Website
         run: |
+          # Create a clean temporary folder for the website
           mkdir _site
-          # Copy frontend files to the root of _site
-          cp -r frontend/* _site/
-          # Copy data folder into _site
+          
+          # Copy all FRONTEND files to the ROOT of _site
+          cp -r ui/* _site/
+          
+          # Copy the DATA folder into _site
           cp -r data _site/
+          
+          # Debug: List the files to ensure structure is correct (Check logs if it fails)
+          ls -R _site
 
       # 4. DEPLOY TO GITHUB PAGES
-      # We use a specific action for this now, targeting the '_site' folder
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
-          force_orphan: true # Keeps the gh-pages branch clean
+          force_orphan: true # This completely overwrites the gh-pages branch (Cleaner)
