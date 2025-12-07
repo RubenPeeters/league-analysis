@@ -30,6 +30,7 @@ jobs:
       - name: Run Data Generator
         env:
           RIOT_API_KEY: ${{ secrets.RIOT_API_KEY }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
           PLAYER_COUNT: 20
           LOG_LEVEL: INFO
         run: python src/main.py
