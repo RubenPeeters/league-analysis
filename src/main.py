@@ -3,8 +3,10 @@ import time
 import os
 import logging
 from riotwatcher import LolWatcher, ApiError
-from collections import Counter
+from pymongo import MongoClient
 from dotenv import load_dotenv
+from datetime import datetime
+from collections import Counter
 
 # --- 1. SETUP ---
 load_dotenv()
@@ -18,24 +20,40 @@ logger = logging.getLogger(__name__)
 
 # --- 2. CONFIGURATION ---
 API_KEY = os.getenv("RIOT_API_KEY")
+MONGO_URI = os.getenv("MONGODB_URI")
 REGIONS = [("kr", "Korea"), ("euw1", "Europe West")]
 VALID_ROLES = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]
 PLAYER_COUNT = int(os.getenv("PLAYER_COUNT", 10))
 MATCH_HISTORY_COUNT = 100
 
+# Path Setup
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(SCRIPT_DIR, "..", "data")
 if not os.path.exists(DATA_FOLDER):
     os.makedirs(DATA_FOLDER)
-DB_FILE = os.path.join(DATA_FOLDER, "match_database.json")
 OUTPUT_FILE = os.path.join(DATA_FOLDER, "data.json")
 
 if not API_KEY:
     raise ValueError("Missing RIOT_API_KEY")
+if not MONGO_URI:
+    raise ValueError("Missing MONGODB_URI")
+
 watcher = LolWatcher(API_KEY)
 
+# --- 3. DATABASE CONNECTION ---
+try:
+    client = MongoClient(MONGO_URI)
+    db = client["league_tracker"]
+    matches_col = db["matches"]
+    # Ensure unique matches to prevent duplicates
+    matches_col.create_index("metadata.matchId", unique=True)
+    logger.info("Connected to MongoDB Atlas")
+except Exception as e:
+    logger.critical(f"Failed to connect to DB: {e}")
+    raise e
 
-# --- 3. HELPER FUNCTIONS ---
+
+# --- 4. HELPER FUNCTIONS ---
 def smart_request(func, *args, **kwargs):
     func_name = func.__name__ if hasattr(func, "__name__") else "API Call"
     while True:
@@ -57,47 +75,11 @@ def smart_request(func, *args, **kwargs):
             raise e
 
 
-def load_database():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r") as f:
-                content = f.read()
-                if not content:
-                    return {"kr": {}, "euw1": {}}
-                return json.loads(content)
-        except:
-            pass
-    return {"kr": {}, "euw1": {}}
-
-
-def save_database(db):
-    with open(DB_FILE, "w") as f:
-        json.dump(db, f, indent=2)
-
-
 def get_short_version(game_version):
+    if not game_version:
+        return "0.0"
     parts = game_version.split(".")
-    return f"{parts[0]}.{parts[1]}"
-
-
-def get_latest_patch(db):
-    all_patches = set()
-    for r in db:
-        for m in db[r].values():
-            if not m:
-                continue
-            first_role = next(iter(m))
-            all_patches.add(m[first_role]["patch"])
-    if not all_patches:
-        return "14.1"
-
-    def version_key(v):
-        try:
-            return tuple(map(int, v.split(".")))
-        except:
-            return (0, 0)
-
-    return max(all_patches, key=version_key)
+    return f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else parts[0]
 
 
 def extract_bans(match_info):
@@ -109,16 +91,12 @@ def extract_bans(match_info):
     ]
 
 
-# --- 4. MAIN LOGIC ---
+# --- 5. MAIN LOGIC ---
 def fetch_data():
-    db = load_database()
     stats = {"new": 0, "skipped": 0}
-    champ_id_to_name = {}
 
-    # PHASE 1: CRAWLER
+    # --- PHASE 1: CRAWLER (Riot API -> MongoDB) ---
     for region_code, region_name in REGIONS:
-        if region_code not in db:
-            db[region_code] = {}
         logger.info(f"=== Scan: {region_name} ({region_code}) ===")
 
         try:
@@ -140,174 +118,234 @@ def fetch_data():
                     else:
                         continue
 
-                    matches = smart_request(
+                    # 1. Get List of Match IDs
+                    match_ids = smart_request(
                         watcher.match.matchlist_by_puuid,
                         region_code,
                         puuid,
                         count=MATCH_HISTORY_COUNT,
                     )
-                    if not matches:
+                    if not match_ids:
                         continue
 
-                    for match_id in matches:
-                        if match_id in db[region_code]:
-                            stats["skipped"] += 1
-                            continue
+                    # 2. Filter out matches already in MongoDB
+                    existing_docs = matches_col.find(
+                        {"metadata.matchId": {"$in": match_ids}},
+                        {"metadata.matchId": 1},
+                    )
+                    existing_ids = {doc["metadata"]["matchId"] for doc in existing_docs}
+                    new_matches = [mid for mid in match_ids if mid not in existing_ids]
 
+                    if not new_matches:
+                        logger.info(
+                            f"Player {i + 1}/{PLAYER_COUNT}: All matches up to date."
+                        )
+                        continue
+
+                    # 3. Fetch & Save New Matches
+                    for match_id in new_matches:
                         match_detail = smart_request(
                             watcher.match.by_id, region_code, match_id
                         )
+
                         if match_detail:
-                            info = match_detail["info"]
-                            version = get_short_version(info["gameVersion"])
-                            match_bans = extract_bans(info)
-                            temp_match_data = {}
-
-                            for p in info["participants"]:
-                                champ_id_to_name[p["championId"]] = p["championName"]
-                                role = p["teamPosition"]
-                                game_name = p.get("riotIdGameName")
-                                tag_line = p.get("riotIdTagline")
-
-                                if game_name and tag_line:
-                                    p_name = f"{game_name}#{tag_line}"
-                                else:
-                                    # Fallback for very old accounts/bots
-                                    p_name = p.get("summonerName") or "Unknown"
-
-                                if role in VALID_ROLES:
-                                    temp_match_data[role] = {
-                                        "name": p_name,  # <--- NEW FIELD
-                                        "champ": p["championName"],
-                                        "win": p["win"],
-                                        "patch": version,
-                                        "k": p["kills"],
-                                        "d": p["deaths"],
-                                        "a": p["assists"],
-                                        "bans": match_bans,
-                                    }
-
-                            if temp_match_data:
-                                db[region_code][match_id] = temp_match_data
+                            # Add region tag for easier querying later
+                            match_detail["_region"] = region_code
+                            try:
+                                matches_col.insert_one(match_detail)
                                 stats["new"] += 1
-                                logger.info(f"   [+] Added Match: {match_id}")
+                                logger.info(f"   [+] Saved: {match_id}")
+                            except:
+                                # Ignore duplicate key errors (race conditions)
+                                pass
 
-                    logger.info(f"Player {i + 1}/{PLAYER_COUNT} scanned.")
+                    logger.info(
+                        f"Player {i + 1}/{PLAYER_COUNT} scanned. +{len(new_matches)} new."
+                    )
+
                 except Exception as e:
                     logger.error(f"Player error: {e}")
         except Exception as e:
             logger.error(f"Region error: {e}")
 
-    save_database(db)
+    # --- PHASE 2: ANALYST (MongoDB -> data.json) ---
+    logger.info("Generating Frontend JSON from MongoDB...")
 
-    # PHASE 2: AGGREGATION
-    logger.info("Generating Frontend JSON...")
-    current_patch = get_latest_patch(db)
+    # 1. Determine Current Patch
+    all_versions = matches_col.distinct("info.gameVersion")
+    valid_versions = [v for v in all_versions if v and v[0].isdigit()]
 
-    total_games = sum(len(db[r]) for r in db)
-    patch_games = 0
-    for r in db:
-        for m in db[r].values():
-            if not m:
-                continue
-            if m[next(iter(m))]["patch"] == current_patch:
-                patch_games += 1
+    def version_key(v):
+        try:
+            return tuple(map(int, v.split(".")[:2]))
+        except:
+            return (0, 0)
+
+    if not valid_versions:
+        current_patch = "14.1"
+    else:
+        current_patch = get_short_version(max(valid_versions, key=version_key))
+
+    logger.info(f"Current Patch: {current_patch}")
+
+    # 2. Build Frontend Structure
+    total_games_db = matches_col.count_documents({})
+    total_patch_games = matches_col.count_documents(
+        {"info.gameVersion": {"$regex": f"^{current_patch}"}}
+    )
 
     frontend_data = {
         "meta": {
-            "total_games": total_games,
-            "patch_games": patch_games,
-            "last_updated": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime()),
+            "total_games": total_games_db,
+            "patch_games": total_patch_games,
+            "last_updated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "current_patch": current_patch,
         },
         "regions": {},
-        "leaderboards": {},  # <--- NEW SECTION
+        "leaderboards": {},
     }
 
-    # Helper for Leaderboards
-    player_performance = {}  # {Champion: {PlayerName: {g, w, k, d, a, region}}}
+    # 3. Aggregation Loop
+    champ_id_to_name = {}
+    player_performance = {}
 
-    for region in db:
-        frontend_data["regions"][region] = {"season": {}, "patch": {}}
+    for region_code, _ in REGIONS:
+        frontend_data["regions"][region_code] = {"season": {}, "patch": {}}
         for r in VALID_ROLES:
-            frontend_data["regions"][region]["season"][r] = []
-            frontend_data["regions"][region]["patch"][r] = []
+            frontend_data["regions"][region_code]["season"][r] = []
+            frontend_data["regions"][region_code]["patch"][r] = []
 
-        matches = db[region].values()
+        # Fetch all matches for region
+        cursor = matches_col.find({"_region": region_code})
 
-        def get_role_stats(match_list, role_name):
-            role_data = [m[role_name] for m in match_list if role_name in m]
-            if not role_data:
+        region_matches = []
+
+        # Pre-process into lightweight objects
+        for m in cursor:
+            info = m.get("info", {})
+            version = get_short_version(info.get("gameVersion", ""))
+            bans = extract_bans(info)
+
+            summary = {"patch": version, "bans": bans, "participants": []}
+
+            for p in info.get("participants", []):
+                champ_id_to_name[p["championId"]] = p["championName"]
+
+                # Name Resolution
+                name = (
+                    f"{p.get('riotIdGameName')}#{p.get('riotIdTagline')}"
+                    if p.get("riotIdGameName")
+                    else (p.get("summonerName") or "Unknown")
+                )
+
+                # Extract Items (New Feature Prep)
+                items = [p.get(f"item{i}", 0) for i in range(6)]
+
+                summary["participants"].append(
+                    {
+                        "role": p["teamPosition"],
+                        "name": name,
+                        "champ": p["championName"],
+                        "win": p["win"],
+                        "k": p["kills"],
+                        "d": p["deaths"],
+                        "a": p["assists"],
+                        "items": items,  # Save items for aggregation
+                    }
+                )
+            region_matches.append(summary)
+
+        # Aggregation Helper
+        def aggregate(match_list, role_filter):
+            stats = {}  # {ChampName: {g, w, k, d, a, b, items:[]}}
+            total = len(match_list)
+            if total == 0:
                 return []
 
-            total = len(role_data)
-            stats = {}
+            # 1. Performance Stats
+            for m in match_list:
+                p = next(
+                    (x for x in m["participants"] if x["role"] == role_filter), None
+                )
+                if not p:
+                    continue
 
-            # Aggregation Loop
-            for d in role_data:
-                name = d["champ"]
-                p_name = d.get("name", "Unknown")
+                c = p["champ"]
 
-                # Global Leaderboard Logic
-                if name not in player_performance:
-                    player_performance[name] = {}
-                if p_name not in player_performance[name]:
-                    player_performance[name][p_name] = {
+                # Leaderboard Data
+                if c not in player_performance:
+                    player_performance[c] = {}
+                if p["name"] not in player_performance[c]:
+                    player_performance[c][p["name"]] = {
                         "g": 0,
                         "w": 0,
                         "k": 0,
                         "d": 0,
                         "a": 0,
-                        "r": region,
+                        "r": region_code,
                     }
 
-                # Add to leaderboard stats
-                pp = player_performance[name][p_name]
+                pp = player_performance[c][p["name"]]
                 pp["g"] += 1
-                if d["win"]:
+                pp["k"] += p["k"]
+                pp["d"] += p["d"]
+                pp["a"] += p["a"]
+                if p["win"]:
                     pp["w"] += 1
-                pp["k"] += d.get("k", 0)
-                pp["d"] += d.get("d", 0)
-                pp["a"] += d.get("a", 0)
 
-                # Standard Stat Logic
-                if name not in stats:
-                    stats[name] = {"g": 0, "w": 0, "k": 0, "d": 0, "a": 0, "b": 0}
-                s = stats[name]
+                # Role Stats
+                if c not in stats:
+                    stats[c] = {
+                        "g": 0,
+                        "w": 0,
+                        "k": 0,
+                        "d": 0,
+                        "a": 0,
+                        "b": 0,
+                        "items": [],
+                    }
+                s = stats[c]
                 s["g"] += 1
-                if d["win"]:
+                s["k"] += p["k"]
+                s["d"] += p["d"]
+                s["a"] += p["a"]
+                if p["win"]:
                     s["w"] += 1
-                s["k"] += d.get("k", 0)
-                s["d"] += d.get("d", 0)
-                s["a"] += d.get("a", 0)
+                s["items"].extend(
+                    [i for i in p["items"] if i != 0]
+                )  # Add non-empty items
 
-            # Bans Logic (Same as before)
+            # 2. Ban Stats
             for m in match_list:
-                if role_name in m:
-                    first = m[role_name]
-                    if "bans" in first:
-                        for bid in first["bans"]:
-                            if bid in champ_id_to_name:
-                                bname = champ_id_to_name[bid]
-                                if bname not in stats:
-                                    stats[bname] = {
-                                        "g": 0,
-                                        "w": 0,
-                                        "k": 0,
-                                        "d": 0,
-                                        "a": 0,
-                                        "b": 0,
-                                    }
-                                stats[bname]["b"] += 1
+                for bid in m["bans"]:
+                    if bid in champ_id_to_name:
+                        bn = champ_id_to_name[bid]
+                        if bn not in stats:
+                            stats[bn] = {
+                                "g": 0,
+                                "w": 0,
+                                "k": 0,
+                                "d": 0,
+                                "a": 0,
+                                "b": 0,
+                                "items": [],
+                            }
+                        stats[bn]["b"] += 1
 
+            # 3. Finalize
             results = []
             for name, s in stats.items():
                 if s["g"] == 0 and s["b"] == 0:
                     continue
-                pick_rate = round((s["g"] / total * 100), 1)
-                ban_rate = round((s["b"] / total * 100), 1)
-                win_rate = round((s["w"] / s["g"] * 100), 1) if s["g"] > 0 else 0
+
+                pick_rate = round((s["g"] / total) * 100, 1)
+                ban_rate = round((s["b"] / total) * 100, 1)
+                win_rate = round((s["w"] / s["g"]) * 100, 1) if s["g"] > 0 else 0
                 kda = round((s["k"] + s["a"]) / (s["d"] if s["d"] > 0 else 1), 2)
+
+                # Calculate Top 3 Items
+                top_items = [i[0] for i in Counter(s["items"]).most_common(3)]
+
                 if s["g"] > 0 or ban_rate > 1.0:
                     results.append(
                         {
@@ -317,48 +355,45 @@ def fetch_data():
                             "win_rate": win_rate,
                             "ban_rate": ban_rate,
                             "kda": kda,
+                            "top_items": top_items,  # New Field
                         }
                     )
+
             return sorted(results, key=lambda x: x["pick_rate"], reverse=True)[:15]
 
-        # Filter Matches
-        valid_matches = [m for m in matches if m]
-        patch_matches = [
-            m for m in valid_matches if m[next(iter(m))]["patch"] == current_patch
-        ]
+        patch_subset = [m for m in region_matches if m["patch"] == current_patch]
 
-        for role in VALID_ROLES:
-            frontend_data["regions"][region]["season"][role] = get_role_stats(
-                valid_matches, role
+        for r in VALID_ROLES:
+            frontend_data["regions"][region_code]["season"][r] = aggregate(
+                region_matches, r
             )
-            frontend_data["regions"][region]["patch"][role] = get_role_stats(
-                patch_matches, role
+            frontend_data["regions"][region_code]["patch"][r] = aggregate(
+                patch_subset, r
             )
 
-    # PROCESS LEADERBOARDS
+    # 4. Finalize Leaderboards
     for champ, players in player_performance.items():
-        leaderboard_list = []
-        for p_name, s in players.items():
+        lb = []
+        for pname, s in players.items():
             kda = round((s["k"] + s["a"]) / (s["d"] if s["d"] > 0 else 1), 2)
             wr = round((s["w"] / s["g"]) * 100, 1)
-            # Only include players with significant games on that champ (optional filter)
-            leaderboard_list.append(
+            lb.append(
                 {
-                    "player": p_name,
+                    "player": pname,
                     "region": s["r"],
                     "games": s["g"],
                     "win_rate": wr,
                     "kda": kda,
                 }
             )
-        # Sort: Games Descending, then Win Rate
         frontend_data["leaderboards"][champ] = sorted(
-            leaderboard_list, key=lambda x: (x["games"], x["win_rate"]), reverse=True
+            lb, key=lambda x: (x["games"], x["win_rate"]), reverse=True
         )
 
     with open(OUTPUT_FILE, "w") as f:
         json.dump(frontend_data, f)
-    logger.info(f"Complete. New matches: {stats['new']}")
+
+    logger.info(f"Complete. New Matches Saved: {stats['new']}")
 
 
 if __name__ == "__main__":

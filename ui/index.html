@@ -89,15 +89,27 @@
 
     <div class="detail-container hidden" id="detail-view">
         <div class="detail-header">
-            <button class="back-btn" onclick="closeDetailView()">← Back to Dashboard</button>
-            <div class="detail-title-group">
-                <img id="detail-img" src="" class="detail-champ-img">
-                <h2 id="detail-name">Champion Name</h2>
+            <button class="back-btn" onclick="closeDetailView()">← Back</button>
+
+            <div class="detail-content-wrapper">
+                <div class="detail-title-group">
+                    <img id="detail-img" src="" class="detail-champ-img">
+                    <div>
+                        <h2 id="detail-name">Champion</h2>
+                        <span class="detail-subtitle">Pro Performance Data</span>
+                    </div>
+                </div>
+
+                <div class="build-section">
+                    <span class="build-label">MOST COMMON PRO BUILD</span>
+                    <div class="item-row" id="detail-items">
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="region-card">
-            <div class="region-header">PLAYER PERFORMANCE LEADERBOARD</div>
+            <div class="region-header">TOP PERFORMING PLAYERS</div>
             <table id="table-players">
                 <thead>
                     <tr>
