@@ -40,7 +40,7 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          git add data/match_database.json data/data.json
+          git add data/data.json
           # Only commit if there are changes
           git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update data [skip ci]"
           git push
