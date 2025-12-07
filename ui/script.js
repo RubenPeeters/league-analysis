@@ -53,10 +53,25 @@ function openDetailView(champName) {
     players.forEach(p => {
         let wrClass = p.win_rate >= 55 ? 'win-high' : (p.win_rate < 45 ? 'win-low' : '');
         let kdaClass = p.kda >= 3.5 ? 'kda-great' : '';
+        
+        // GENERATE URL
+        const profileUrl = getOpGgUrl(p.region, p.player);
 
         const html = `
             <tr>
-                <td style="font-weight:bold; color:#fff;">${p.player}</td>
+                <td>
+                    <div class="player-cell">
+                        <span style="font-weight:bold; color:#fff;">${p.player}</span>
+                        
+                        <a href="${profileUrl}" target="_blank" class="opgg-link" title="View on OP.GG">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                    </div>
+                </td>
                 <td><span class="region-badge">${p.region.toUpperCase()}</span></td>
                 <td>${p.games}</td>
                 <td class="stat-cell ${wrClass}">${p.win_rate}%</td>
@@ -116,6 +131,30 @@ function renderTable(regionKey) {
         `;
         tbody.appendChild(tr);
     });
+}
+
+function getOpGgUrl(region, riotId) {
+    // 1. Handle missing/malformed IDs
+    if (!riotId || !riotId.includes('#')) return '#';
+
+    // 2. Map API Region (euw1) to OP.GG Region (euw)
+    const regionMap = {
+        'kr': 'kr',
+        'euw1': 'euw',
+        'na1': 'na',
+        'br1': 'br',
+        'eun1': 'eune'
+        // Add others if you expand regions
+    };
+    const opGgRegion = regionMap[region] || 'kr';
+
+    // 3. Format Name-Tag (Replace # with -)
+    // OP.GG format: https://www.op.gg/summoners/euw/Name-Tag
+    const [name, tag] = riotId.split('#');
+    const encodedName = encodeURIComponent(name);
+    const encodedTag = encodeURIComponent(tag);
+    
+    return `https://www.op.gg/summoners/${opGgRegion}/${encodedName}-${encodedTag}`;
 }
 
 function updateMetaInfo() {

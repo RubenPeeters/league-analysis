@@ -166,12 +166,14 @@ def fetch_data():
                             for p in info["participants"]:
                                 champ_id_to_name[p["championId"]] = p["championName"]
                                 role = p["teamPosition"]
-                                # CAPTURE PLAYER NAME (Prioritize RiotID, fallback to SummonerName)
-                                p_name = (
-                                    p.get("riotIdGameName")
-                                    or p.get("summonerName")
-                                    or "Unknown"
-                                )
+                                game_name = p.get("riotIdGameName")
+                                tag_line = p.get("riotIdTagline")
+
+                                if game_name and tag_line:
+                                    p_name = f"{game_name}#{tag_line}"
+                                else:
+                                    # Fallback for very old accounts/bots
+                                    p_name = p.get("summonerName") or "Unknown"
 
                                 if role in VALID_ROLES:
                                     temp_match_data[role] = {
