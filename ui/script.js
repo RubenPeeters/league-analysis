@@ -50,7 +50,7 @@ function openDetailView(champData) {
     document.getElementById('detail-name').innerText = champName;
     document.getElementById('detail-img').src = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/champion/${champName}.png`;
 
-    // 3. Populate Items (NEW)
+    // 3. Populate Core Items
     const itemContainer = document.getElementById('detail-items');
     itemContainer.innerHTML = '';
     
@@ -59,29 +59,65 @@ function openDetailView(champData) {
             const img = document.createElement('img');
             img.src = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/item/${itemId}.png`;
             img.className = 'item-icon';
-            img.title = `Item ID: ${itemId}`; // Simple tooltip
+            img.title = `Item ID: ${itemId}`;
             itemContainer.appendChild(img);
         });
     } else {
         itemContainer.innerHTML = '<span style="color:#666; font-size:0.8rem;">No build data</span>';
     }
 
+    // --- NEW: POPULATE CONTEXT BUILDS ---
+    const contextContainer = document.getElementById('context-builds');
+    contextContainer.innerHTML = ''; // Clear previous
+
+    if (champData.context_builds && Object.keys(champData.context_builds).length > 0) {
+        // Define color classes for specific tags
+        const tagMap = {
+            "Heavy AD": "ctx-ad",
+            "Heavy AP": "ctx-ap",
+            "Tank Heavy": "ctx-tank"
+        };
+
+        for (const [tag, data] of Object.entries(champData.context_builds)) {
+            // Only show if we have items
+            if (!data.items || data.items.length === 0) continue;
+
+            const colorClass = tagMap[tag] || "ctx-default";
+            
+            // Create Card HTML
+            const card = document.createElement('div');
+            card.className = `context-card ${colorClass}`;
+            
+            // Build Item Images HTML
+            const itemsHtml = data.items.map(id => 
+                `<img src="https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/item/${id}.png" class="small-item-icon" title="${tag} Build">`
+            ).join('');
+
+            card.innerHTML = `
+                <span class="context-label">
+                    VS ${tag}
+                    <span class="context-games">${data.games} Games</span>
+                </span>
+                <div class="small-item-row">
+                    ${itemsHtml}
+                </div>
+            `;
+            contextContainer.appendChild(card);
+        }
+    }
+    // -------------------------------------
+
     // 4. Populate Player Table
     const tbody = document.querySelector('#table-players tbody');
     tbody.innerHTML = '';
 
-    console.log("Looking for champion:", champData.name);
-    console.log("Available Leaderboards:", Object.keys(globalData.leaderboards || {}));
-
-    const players = globalData.leaderboards ? globalData.leaderboards[champData.name] : [];
+    const players = globalData.leaderboards ? globalData.leaderboards[champName] : [];
 
     if (!players || players.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#666;">No individual player data found.</td></tr>';
         return;
     }
 
-
-    
     players.forEach(p => {
         let wrClass = p.win_rate >= 55 ? 'win-high' : (p.win_rate < 45 ? 'win-low' : '');
         let kdaClass = p.kda >= 3.5 ? 'kda-great' : '';

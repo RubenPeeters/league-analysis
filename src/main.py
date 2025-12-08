@@ -2,6 +2,7 @@ import json
 import time
 import os
 import logging
+import requests
 from riotwatcher import LolWatcher, ApiError
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -26,7 +27,6 @@ VALID_ROLES = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]
 PLAYER_COUNT = int(os.getenv("PLAYER_COUNT", 10))
 MATCH_HISTORY_COUNT = 100
 
-# Path Setup
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(SCRIPT_DIR, "..", "data")
 if not os.path.exists(DATA_FOLDER):
@@ -40,31 +40,69 @@ if not MONGO_URI:
 
 watcher = LolWatcher(API_KEY)
 
-# --- 3. DATABASE CONNECTION ---
+# --- 3. DATABASE ---
 try:
-    client = MongoClient(MONGO_URI)
+    import certifi
+
+    client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
     db = client["league_tracker"]
     matches_col = db["matches"]
-    # Ensure unique matches to prevent duplicates
     matches_col.create_index("metadata.matchId", unique=True)
     logger.info("Connected to MongoDB Atlas")
 except Exception as e:
-    logger.critical(f"Failed to connect to DB: {e}")
+    logger.critical(f"DB Error: {e}")
     raise e
 
+# --- 4. STATIC DATA (Context & Item Filtering) ---
+TANK_CHAMPS = set()
+VALID_ITEMS = None  # If None, we won't filter (fallback)
 
-# --- 4. HELPER FUNCTIONS ---
+try:
+    # 1. Get Version
+    ver_res = requests.get("https://ddragon.leagueoflegends.com/api/versions.json")
+    if ver_res.ok:
+        latest_ver = ver_res.json()[0]
+
+        # 2. Get Champions (For Tank Context)
+        champ_res = requests.get(
+            f"https://ddragon.leagueoflegends.com/cdn/{latest_ver}/data/en_US/champion.json"
+        )
+        if champ_res.ok:
+            c_data = champ_res.json()["data"]
+            TANK_CHAMPS = {name for name, d in c_data.items() if "Tank" in d["tags"]}
+            logger.info(f"Loaded {len(TANK_CHAMPS)} Tank definitions.")
+
+        # 3. Get Items (For Filtering Components)
+        item_res = requests.get(
+            f"https://ddragon.leagueoflegends.com/cdn/{latest_ver}/data/en_US/item.json"
+        )
+        if item_res.ok:
+            i_data = item_res.json()["data"]
+            VALID_ITEMS = set()
+            for i_id, d in i_data.items():
+                depth = d.get("depth", 1)
+                is_boot = "Boots" in d.get("tags", [])
+
+                # RULE: Keep item if Depth >= 3 (Legendary) OR Depth 2 Boots (Plated Steelcaps etc)
+                if depth >= 3 or (depth == 2 and is_boot):
+                    VALID_ITEMS.add(int(i_id))
+
+            logger.info(
+                f"Loaded {len(VALID_ITEMS)} Valid Items (Filtered out components)."
+            )
+
+except Exception as e:
+    logger.error(f"Static Data Error: {e}")
+
+
+# --- 5. HELPER FUNCTIONS ---
 def smart_request(func, *args, **kwargs):
-    func_name = func.__name__ if hasattr(func, "__name__") else "API Call"
     while True:
         try:
-            logger.debug(f"Requesting: {func_name}")
             return func(*args, **kwargs)
         except ApiError as e:
             if e.response.status_code == 429:
-                retry = int(e.response.headers.get("Retry-After", 10))
-                logger.warning(f"⚠️ Rate Limit. Sleeping {retry}s...")
-                time.sleep(retry + 1)
+                time.sleep(int(e.response.headers.get("Retry-After", 10)) + 1)
                 continue
             elif e.response.status_code == 404:
                 return None
@@ -91,14 +129,39 @@ def extract_bans(match_info):
     ]
 
 
-# --- 5. MAIN LOGIC ---
-def fetch_data():
-    stats = {"new": 0, "skipped": 0}
+def analyze_enemy_comp(match_info, my_team_id):
+    enemies = [p for p in match_info["participants"] if p["teamId"] != my_team_id]
+    total_phys = sum(p.get("physicalDamageDealtToChampions", 0) for p in enemies)
+    total_magic = sum(p.get("magicDamageDealtToChampions", 0) for p in enemies)
+    total_dmg = (
+        total_phys
+        + total_magic
+        + sum(p.get("trueDamageDealtToChampions", 0) for p in enemies)
+    )
 
-    # --- PHASE 1: CRAWLER (Riot API -> MongoDB) ---
+    if total_dmg == 0:
+        return []
+
+    tags = []
+    if (total_phys / total_dmg) > 0.65:
+        tags.append("Heavy AD")
+    elif (total_magic / total_dmg) > 0.60:
+        tags.append("Heavy AP")
+
+    tank_count = sum(1 for p in enemies if p["championName"] in TANK_CHAMPS)
+    if tank_count >= 2:
+        tags.append("Tank Heavy")
+
+    return tags
+
+
+# --- 6. MAIN LOGIC ---
+def fetch_data():
+    stats = {"new": 0}
+
+    # PHASE 1: CRAWLER
     for region_code, region_name in REGIONS:
         logger.info(f"=== Scan: {region_name} ({region_code}) ===")
-
         try:
             challenger = smart_request(
                 watcher.league.challenger_by_queue, region_code, "RANKED_SOLO_5x5"
@@ -118,7 +181,6 @@ def fetch_data():
                     else:
                         continue
 
-                    # 1. Get List of Match IDs
                     match_ids = smart_request(
                         watcher.match.matchlist_by_puuid,
                         region_code,
@@ -128,7 +190,6 @@ def fetch_data():
                     if not match_ids:
                         continue
 
-                    # 2. Filter out matches already in MongoDB
                     existing_docs = matches_col.find(
                         {"metadata.matchId": {"$in": match_ids}},
                         {"metadata.matchId": 1},
@@ -137,41 +198,31 @@ def fetch_data():
                     new_matches = [mid for mid in match_ids if mid not in existing_ids]
 
                     if not new_matches:
-                        logger.info(
-                            f"Player {i + 1}/{PLAYER_COUNT}: All matches up to date."
-                        )
+                        logger.info(f"Player {i + 1}/{PLAYER_COUNT}: Up to date.")
                         continue
 
-                    # 3. Fetch & Save New Matches
                     for match_id in new_matches:
                         match_detail = smart_request(
                             watcher.match.by_id, region_code, match_id
                         )
-
                         if match_detail:
-                            # Add region tag for easier querying later
                             match_detail["_region"] = region_code
                             try:
                                 matches_col.insert_one(match_detail)
                                 stats["new"] += 1
                                 logger.info(f"   [+] Saved: {match_id}")
                             except:
-                                # Ignore duplicate key errors (race conditions)
                                 pass
 
-                    logger.info(
-                        f"Player {i + 1}/{PLAYER_COUNT} scanned. +{len(new_matches)} new."
-                    )
-
+                    logger.info(f"Player {i + 1}/{PLAYER_COUNT} scanned.")
                 except Exception as e:
                     logger.error(f"Player error: {e}")
         except Exception as e:
             logger.error(f"Region error: {e}")
 
-    # --- PHASE 2: ANALYST (MongoDB -> data.json) ---
-    logger.info("Generating Frontend JSON from MongoDB...")
+    # PHASE 2: ANALYST
+    logger.info("Generating Frontend JSON...")
 
-    # 1. Determine Current Patch
     all_versions = matches_col.distinct("info.gameVersion")
     valid_versions = [v for v in all_versions if v and v[0].isdigit()]
 
@@ -181,14 +232,12 @@ def fetch_data():
         except:
             return (0, 0)
 
-    if not valid_versions:
-        current_patch = "14.1"
-    else:
-        current_patch = get_short_version(max(valid_versions, key=version_key))
+    current_patch = (
+        get_short_version(max(valid_versions, key=version_key))
+        if valid_versions
+        else "14.1"
+    )
 
-    logger.info(f"Current Patch: {current_patch}")
-
-    # 2. Build Frontend Structure
     total_games_db = matches_col.count_documents({})
     total_patch_games = matches_col.count_documents(
         {"info.gameVersion": {"$regex": f"^{current_patch}"}}
@@ -205,7 +254,6 @@ def fetch_data():
         "leaderboards": {},
     }
 
-    # 3. Aggregation Loop
     champ_id_to_name = {}
     player_performance = {}
 
@@ -215,31 +263,31 @@ def fetch_data():
             frontend_data["regions"][region_code]["season"][r] = []
             frontend_data["regions"][region_code]["patch"][r] = []
 
-        # Fetch all matches for region
         cursor = matches_col.find({"_region": region_code})
-
         region_matches = []
 
-        # Pre-process into lightweight objects
         for m in cursor:
             info = m.get("info", {})
             version = get_short_version(info.get("gameVersion", ""))
             bans = extract_bans(info)
 
+            context_map = {
+                100: analyze_enemy_comp(info, 100),
+                200: analyze_enemy_comp(info, 200),
+            }
+
             summary = {"patch": version, "bans": bans, "participants": []}
 
             for p in info.get("participants", []):
                 champ_id_to_name[p["championId"]] = p["championName"]
-
-                # Name Resolution
                 name = (
                     f"{p.get('riotIdGameName')}#{p.get('riotIdTagline')}"
                     if p.get("riotIdGameName")
                     else (p.get("summonerName") or "Unknown")
                 )
-
-                # Extract Items (New Feature Prep)
                 items = [p.get(f"item{i}", 0) for i in range(6)]
+
+                my_context = context_map.get(p["teamId"], [])
 
                 summary["participants"].append(
                     {
@@ -250,19 +298,18 @@ def fetch_data():
                         "k": p["kills"],
                         "d": p["deaths"],
                         "a": p["assists"],
-                        "items": items,  # Save items for aggregation
+                        "items": items,
+                        "context": my_context,
                     }
                 )
             region_matches.append(summary)
 
-        # Aggregation Helper
         def aggregate(match_list, role_filter):
-            stats = {}  # {ChampName: {g, w, k, d, a, b, items:[]}}
-            total = len(match_list)
-            if total == 0:
+            stats = {}
+            total_matches = len(match_list)
+            if total_matches == 0:
                 return []
 
-            # 1. Performance Stats
             for m in match_list:
                 p = next(
                     (x for x in m["participants"] if x["role"] == role_filter), None
@@ -272,7 +319,7 @@ def fetch_data():
 
                 c = p["champ"]
 
-                # Leaderboard Data
+                # Leaderboard
                 if c not in player_performance:
                     player_performance[c] = {}
                 if p["name"] not in player_performance[c]:
@@ -284,7 +331,6 @@ def fetch_data():
                         "a": 0,
                         "r": region_code,
                     }
-
                 pp = player_performance[c][p["name"]]
                 pp["g"] += 1
                 pp["k"] += p["k"]
@@ -296,55 +342,93 @@ def fetch_data():
                 # Role Stats
                 if c not in stats:
                     stats[c] = {
-                        "g": 0,
-                        "w": 0,
-                        "k": 0,
-                        "d": 0,
-                        "a": 0,
-                        "b": 0,
-                        "items": [],
+                        "all": {
+                            "g": 0,
+                            "w": 0,
+                            "k": 0,
+                            "d": 0,
+                            "a": 0,
+                            "b": 0,
+                            "items": [],
+                        },
+                        "Heavy AD": {"g": 0, "w": 0, "items": []},
+                        "Heavy AP": {"g": 0, "w": 0, "items": []},
+                        "Tank Heavy": {"g": 0, "w": 0, "items": []},
                     }
-                s = stats[c]
+
+                # 1. Update "All"
+                s = stats[c]["all"]
                 s["g"] += 1
                 s["k"] += p["k"]
                 s["d"] += p["d"]
                 s["a"] += p["a"]
                 if p["win"]:
                     s["w"] += 1
-                s["items"].extend(
-                    [i for i in p["items"] if i != 0]
-                )  # Add non-empty items
 
-            # 2. Ban Stats
+                # ITEM FILTERING LOGIC
+                valid_player_items = []
+                for i in p["items"]:
+                    if i == 0:
+                        continue
+                    # Only add if in Whitelist (or if whitelist failed to load, add all)
+                    if VALID_ITEMS is None or i in VALID_ITEMS:
+                        valid_player_items.append(i)
+
+                s["items"].extend(valid_player_items)
+
+                # 2. Update Context
+                for tag in p["context"]:
+                    if tag in stats[c]:
+                        ctx_s = stats[c][tag]
+                        ctx_s["g"] += 1
+                        if p["win"]:
+                            ctx_s["w"] += 1
+                        ctx_s["items"].extend(valid_player_items)
+
+            # Bans
             for m in match_list:
                 for bid in m["bans"]:
                     if bid in champ_id_to_name:
                         bn = champ_id_to_name[bid]
                         if bn not in stats:
                             stats[bn] = {
-                                "g": 0,
-                                "w": 0,
-                                "k": 0,
-                                "d": 0,
-                                "a": 0,
-                                "b": 0,
-                                "items": [],
+                                "all": {
+                                    "g": 0,
+                                    "w": 0,
+                                    "k": 0,
+                                    "d": 0,
+                                    "a": 0,
+                                    "b": 0,
+                                    "items": [],
+                                }
                             }
-                        stats[bn]["b"] += 1
+                        stats[bn]["all"]["b"] += 1
 
-            # 3. Finalize
             results = []
-            for name, s in stats.items():
+            for name, data in stats.items():
+                s = data["all"]
                 if s["g"] == 0 and s["b"] == 0:
                     continue
 
-                pick_rate = round((s["g"] / total) * 100, 1)
-                ban_rate = round((s["b"] / total) * 100, 1)
+                pick_rate = round((s["g"] / total_matches) * 100, 1)
+                ban_rate = round((s["b"] / total_matches) * 100, 1)
                 win_rate = round((s["w"] / s["g"]) * 100, 1) if s["g"] > 0 else 0
                 kda = round((s["k"] + s["a"]) / (s["d"] if s["d"] > 0 else 1), 2)
 
-                # Calculate Top 3 Items
+                # Most Common 3 Items
                 top_items = [i[0] for i in Counter(s["items"]).most_common(3)]
+
+                context_builds = {}
+                for tag in ["Heavy AD", "Heavy AP", "Tank Heavy"]:
+                    ctx_data = data.get(tag)
+                    if ctx_data and ctx_data["g"] >= 3:
+                        ctx_items = [
+                            i[0] for i in Counter(ctx_data["items"]).most_common(3)
+                        ]
+                        context_builds[tag] = {
+                            "games": ctx_data["g"],
+                            "items": ctx_items,
+                        }
 
                 if s["g"] > 0 or ban_rate > 1.0:
                     results.append(
@@ -355,7 +439,8 @@ def fetch_data():
                             "win_rate": win_rate,
                             "ban_rate": ban_rate,
                             "kda": kda,
-                            "top_items": top_items,  # New Field
+                            "top_items": top_items,
+                            "context_builds": context_builds,
                         }
                     )
 
@@ -371,7 +456,6 @@ def fetch_data():
                 patch_subset, r
             )
 
-    # 4. Finalize Leaderboards
     for champ, players in player_performance.items():
         lb = []
         for pname, s in players.items():
@@ -392,8 +476,7 @@ def fetch_data():
 
     with open(OUTPUT_FILE, "w") as f:
         json.dump(frontend_data, f)
-
-    logger.info(f"Complete. New Matches Saved: {stats['new']}")
+    logger.info(f"Complete. New Matches: {stats['new']}")
 
 
 if __name__ == "__main__":
