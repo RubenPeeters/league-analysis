@@ -310,7 +310,9 @@ def fetch_data():
             if total_matches == 0:
                 return []
 
+            # 1. Loop through all matches to gather raw stats
             for m in match_list:
+                # Find the player in the specific role (e.g. JUNGLE)
                 p = next(
                     (x for x in m["participants"] if x["role"] == role_filter), None
                 )
@@ -319,7 +321,7 @@ def fetch_data():
 
                 c = p["champ"]
 
-                # Leaderboard
+                # --- LEADERBOARD LOGIC ---
                 if c not in player_performance:
                     player_performance[c] = {}
                 if p["name"] not in player_performance[c]:
@@ -339,25 +341,21 @@ def fetch_data():
                 if p["win"]:
                     pp["w"] += 1
 
-                # Role Stats
+                # --- CHAMPION STATS INITIALIZATION ---
                 if c not in stats:
+                    # Note: 'builds' is a list that will store every valid item set found
                     stats[c] = {
-                        "all": {
-                            "g": 0,
-                            "w": 0,
-                            "k": 0,
-                            "d": 0,
-                            "a": 0,
-                            "b": 0,
-                            "items": [],
-                        },
-                        "Heavy AD": {"g": 0, "w": 0, "items": []},
-                        "Heavy AP": {"g": 0, "w": 0, "items": []},
-                        "Tank Heavy": {"g": 0, "w": 0, "items": []},
+                        "g": 0,
+                        "w": 0,
+                        "k": 0,
+                        "d": 0,
+                        "a": 0,
+                        "b": 0,
+                        "builds": [],
+                        "context_data": {},
                     }
 
-                # 1. Update "All"
-                s = stats[c]["all"]
+                s = stats[c]
                 s["g"] += 1
                 s["k"] += p["k"]
                 s["d"] += p["d"]
@@ -365,71 +363,89 @@ def fetch_data():
                 if p["win"]:
                     s["w"] += 1
 
-                # ITEM FILTERING LOGIC
+                # --- ITEM BUILD LOGIC ---
+                # 1. Filter: Keep only 'Valid' items (Legendaries)
                 valid_player_items = []
                 for i in p["items"]:
-                    if i == 0:
-                        continue
-                    # Only add if in Whitelist (or if whitelist failed to load, add all)
-                    if VALID_ITEMS is None or i in VALID_ITEMS:
+                    if i != 0 and (VALID_ITEMS is None or i in VALID_ITEMS):
                         valid_player_items.append(i)
 
-                s["items"].extend(valid_player_items)
+                # 2. Signature: Take top 3, SORT them, and tuple them
+                # Sorting ensures [Item A, Item B] counts the same as [Item B, Item A]
+                if (
+                    len(valid_player_items) >= 2
+                ):  # Only count if they have at least 2 core items
+                    build_signature = tuple(sorted(valid_player_items[:3]))
+                    s["builds"].append(build_signature)
 
-                # 2. Update Context
+                # --- CONTEXT LOGIC (Optional: Gather context stats) ---
                 for tag in p["context"]:
-                    if tag in stats[c]:
-                        ctx_s = stats[c][tag]
-                        ctx_s["g"] += 1
-                        if p["win"]:
-                            ctx_s["w"] += 1
-                        ctx_s["items"].extend(valid_player_items)
+                    if tag not in s["context_data"]:
+                        s["context_data"][tag] = {"g": 0, "builds": []}
 
-            # Bans
+                    ctx = s["context_data"][tag]
+                    ctx["g"] += 1
+                    if len(valid_player_items) >= 2:
+                        ctx["builds"].append(tuple(sorted(valid_player_items[:3])))
+
+            # 2. Count Bans (Global look at the match set)
             for m in match_list:
                 for bid in m["bans"]:
                     if bid in champ_id_to_name:
                         bn = champ_id_to_name[bid]
+                        # Init if banned but not played
                         if bn not in stats:
                             stats[bn] = {
-                                "all": {
-                                    "g": 0,
-                                    "w": 0,
-                                    "k": 0,
-                                    "d": 0,
-                                    "a": 0,
-                                    "b": 0,
-                                    "items": [],
-                                }
+                                "g": 0,
+                                "w": 0,
+                                "k": 0,
+                                "d": 0,
+                                "a": 0,
+                                "b": 0,
+                                "builds": [],
+                                "context_data": {},
                             }
-                        stats[bn]["all"]["b"] += 1
+                        stats[bn]["b"] += 1
 
+            # 3. Finalize and Format Results
             results = []
-            for name, data in stats.items():
-                s = data["all"]
+            for name, s in stats.items():
                 if s["g"] == 0 and s["b"] == 0:
                     continue
 
+                # Basic Math
                 pick_rate = round((s["g"] / total_matches) * 100, 1)
                 ban_rate = round((s["b"] / total_matches) * 100, 1)
                 win_rate = round((s["w"] / s["g"]) * 100, 1) if s["g"] > 0 else 0
                 kda = round((s["k"] + s["a"]) / (s["d"] if s["d"] > 0 else 1), 2)
 
-                # Most Common 3 Items
-                top_items = [i[0] for i in Counter(s["items"]).most_common(3)]
+                # --- CALCULATE TOP BUILD ---
+                top_items = []
+                if s["builds"]:
+                    # Counter finds the most common tuple signature
+                    # most_common(1) returns [( (ItemA, ItemB, ItemC), Count )]
+                    most_common = Counter(s["builds"]).most_common(1)
+                    if most_common:
+                        # Convert tuple back to list for JSON
+                        top_items = list(most_common[0][0])
 
+                # --- CALCULATE CONTEXT BUILDS ---
                 context_builds = {}
-                for tag in ["Heavy AD", "Heavy AP", "Tank Heavy"]:
-                    ctx_data = data.get(tag)
-                    if ctx_data and ctx_data["g"] >= 3:
-                        ctx_items = [
-                            i[0] for i in Counter(ctx_data["items"]).most_common(3)
-                        ]
-                        context_builds[tag] = {
-                            "games": ctx_data["g"],
-                            "items": ctx_items,
-                        }
+                for tag, ctx_data in s.get("context_data", {}).items():
+                    if ctx_data["g"] >= 3:  # Minimum sample size filter
+                        ctx_top_items = []
+                        if ctx_data["builds"]:
+                            ctx_common = Counter(ctx_data["builds"]).most_common(1)
+                            if ctx_common:
+                                ctx_top_items = list(ctx_common[0][0])
 
+                        if ctx_top_items:
+                            context_builds[tag] = {
+                                "games": ctx_data["g"],
+                                "items": ctx_top_items,
+                            }
+
+                # Only include relevant champions
                 if s["g"] > 0 or ban_rate > 1.0:
                     results.append(
                         {
@@ -439,7 +455,7 @@ def fetch_data():
                             "win_rate": win_rate,
                             "ban_rate": ban_rate,
                             "kda": kda,
-                            "top_items": top_items,
+                            "top_items": top_items,  # Now a sorted SET of items
                             "context_builds": context_builds,
                         }
                     )
