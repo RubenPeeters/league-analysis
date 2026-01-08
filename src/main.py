@@ -196,12 +196,35 @@ def fetch_data():
     for region_code, region_name in REGIONS:
         logger.info(f"=== Scan: {region_name} ({region_code}) ===")
         try:
+            # Try to get top players from Challenger ladder
             challenger = smart_request(
                 watcher.league.challenger_by_queue, region_code, "RANKED_SOLO_5x5"
             )
-            entries = sorted(
-                challenger["entries"], key=lambda x: x["leaguePoints"], reverse=True
-            )[:PLAYER_COUNT]
+            entries = []
+            if challenger:
+                entries = challenger["entries"]  # type: ignore
+
+            # If ladder is empty (e.g., season reset), use last known top players from database
+            if len(entries) < PLAYER_COUNT:
+                logger.info(f"Ladder has only {len(entries)} players (season reset?). Using last known top players...")
+                # Get distinct PUUIDs from recent matches to track previous top players
+                pipeline = [
+                    {"$match": {"_region": region_code}},
+                    {"$sort": {"info.gameCreation": -1}},
+                    {"$limit": 500},
+                    {"$unwind": "$info.participants"},
+                    {"$group": {"_id": "$info.participants.puuid"}},
+                    {"$limit": PLAYER_COUNT}
+                ]
+                fallback_puuids = [doc["_id"] for doc in matches_col.aggregate(pipeline)]
+                logger.info(f"Found {len(fallback_puuids)} players from recent matches.")
+
+                # Convert PUUIDs to entry format
+                entries = [{"puuid": puuid} for puuid in fallback_puuids]
+            else:
+                entries = sorted(
+                    entries, key=lambda x: x.get("leaguePoints", 0), reverse=True
+                )[:PLAYER_COUNT]
 
             for i, entry in enumerate(entries):
                 try:
