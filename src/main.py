@@ -3,7 +3,7 @@ import time
 import os
 import logging
 import requests
-from riotwatcher import LolWatcher, ApiError
+from riotwatcher import LolWatcher, RiotWatcher, ApiError
 from pymongo import MongoClient
 from dotenv import load_dotenv
 from datetime import datetime
@@ -27,6 +27,27 @@ VALID_ROLES = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]
 PLAYER_COUNT = int(os.getenv("PLAYER_COUNT", 10))
 MATCH_HISTORY_COUNT = 100
 
+# Fallback pro players for season reset (when ladder is empty)
+FALLBACK_PRO_PLAYERS = {
+    "kr": [
+        # Top Korean Pro Players (Riot ID format: GameName#TAG)
+        "Faker#KR1", "Zeus#0000", "Oner#KR1", "Gumayusi#KR1", "Keria#KR1",
+        "Chovy#KR1", "Doran#KR1", "Peanut#KR1", "Viper#KR1", "Delight#KR1",
+        "ShowMaker#KR1", "Canyon#KR1", "Aiming#KR1", "Kellin#KR1",
+        "Kiin#KR1", "Peyz#KR1", "Zeka#KR1", "Ruler#KR1", "Deft#KR1",
+        "BeryL#KR1", "Canna#KR1", "Teddy#KR1", "Effort#KR1", "Life#KR1"
+    ],
+    "euw1": [
+        # Top European Pro Players
+        "Caps#EUW", "Upset#EUW", "Mikyx#EUW", "Jankos#EUW", "Rekkles#3737",
+        "Inspired#EUW", "Hans sama#EUW", "Elyoya#EUW", "Humanoid#EUW",
+        "Razork#EUW", "Comp#EUW", "Targamas#EUW", "Odoamne#EUW",
+        "Larssen#EUW", "Irrelevant#EUW", "Labrov#EUW", "Alphari#EUW",
+        "Jun#EUW", "Kaiser#EUW", "Crownie#EUW", "Nuclearint#EUW",
+        "Bwipo#EUW", "Nisqy#EUW", "Hylissang#EUW"
+    ]
+}
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(SCRIPT_DIR, "..", "data")
 if not os.path.exists(DATA_FOLDER):
@@ -39,6 +60,7 @@ if not MONGO_URI:
     raise ValueError("Missing MONGODB_URI")
 
 watcher = LolWatcher(API_KEY)
+riot_watcher = RiotWatcher(API_KEY)
 
 # --- 3. DATABASE ---
 try:
@@ -206,10 +228,11 @@ def fetch_data():
             if challenger:
                 entries = challenger["entries"]  # type: ignore
 
-            # If ladder is empty (e.g., season reset), use last known top players from database
+            # If ladder is empty (e.g., season reset), use fallback strategies
             if len(entries) < PLAYER_COUNT:
-                logger.info(f"Ladder has only {len(entries)} players (season reset?). Using last known top players...")
-                # Get distinct PUUIDs from recent matches to track previous top players
+                logger.info(f"Ladder has only {len(entries)} players (season reset?). Using fallback players...")
+
+                # Strategy 1: Try to get PUUIDs from recent matches in database
                 pipeline = [
                     {"$match": {"_region": region_code}},
                     {"$sort": {"info.gameCreation": -1}},
@@ -219,10 +242,37 @@ def fetch_data():
                     {"$limit": PLAYER_COUNT}
                 ]
                 fallback_puuids = [doc["_id"] for doc in matches_col.aggregate(pipeline)]
-                logger.info(f"Found {len(fallback_puuids)} players from recent matches.")
 
-                # Convert PUUIDs to entry format
-                entries = [{"puuid": puuid} for puuid in fallback_puuids]
+                # Strategy 2: If database is also empty, use hardcoded pro players
+                if len(fallback_puuids) < PLAYER_COUNT and region_code in FALLBACK_PRO_PLAYERS:
+                    logger.info("Database empty. Looking up pro player PUUIDs from Riot API...")
+                    pro_names = FALLBACK_PRO_PLAYERS[region_code][:PLAYER_COUNT]
+
+                    for riot_id in pro_names:
+                        try:
+                            # Split GameName#TAG format
+                            if "#" not in riot_id:
+                                continue
+                            game_name, tag_line = riot_id.split("#", 1)
+
+                            # Look up account by Riot ID using RiotWatcher
+                            routing = "asia" if region_code == "kr" else "europe"
+                            account = smart_request(
+                                riot_watcher.account.by_riot_id, routing,
+                                game_name, tag_line
+                            )
+                            if account and "puuid" in account:  # type: ignore
+                                fallback_puuids.append(account["puuid"])  # type: ignore
+                                logger.info(f"  Found: {riot_id}")
+                        except Exception as e:
+                            logger.warning(f"  Could not find {riot_id}: {e}")
+                            continue
+
+                logger.info(f"Found {len(fallback_puuids)} fallback players total.")
+
+                # Extend entries with fallback players
+                entries.extend([{"puuid": puuid} for puuid in fallback_puuids[:PLAYER_COUNT]])
+                entries = entries[:PLAYER_COUNT]
             else:
                 entries = sorted(
                     entries, key=lambda x: x.get("leaguePoints", 0), reverse=True
