@@ -245,7 +245,7 @@ def fetch_data():
             if len(entries) < PLAYER_COUNT:
                 logger.info(f"Not enough GM players, trying Master...")
                 master = smart_request(
-                    watcher.league.master_by_queue, region_code, "RANKED_SOLO_5x5"
+                    watcher.league.masters_by_queue, region_code, "RANKED_SOLO_5x5"
                 )
                 if master and "entries" in master:
                     entries.extend(master["entries"])  # type: ignore
