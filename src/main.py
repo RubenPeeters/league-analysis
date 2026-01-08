@@ -167,23 +167,25 @@ def fetch_data():
         target_patch = get_short_version(current_full_ver)
 
         logger.info(f"--- DB MAINTENANCE ---")
-        logger.info(f"Target Patch: {target_patch}. Pruning old data...")
+        logger.info(f"Target Patch: {target_patch}.")
+        logger.info("CLEANUP TEMPORARILY DISABLED: Keeping old patch data during season reset.")
 
-        try:
-            # 2. Delete matches that do NOT start with the target patch string
-            # The regex "^14.23" ensures we match the start of the version string.
-            delete_result = matches_col.delete_many(
-                {"info.gameVersion": {"$not": {"$regex": f"^{target_patch}"}}}
-            )
-
-            if delete_result.deleted_count > 0:
-                logger.info(
-                    f"Purged {delete_result.deleted_count} matches from older patches."
-                )
-            else:
-                logger.info("Database is already clean (no old patches found).")
-        except Exception as e:
-            logger.error(f"Cleanup Error: {e}")
+        # TEMPORARILY DISABLED: Uncomment after Challenger ladder populates (1-2 weeks)
+        # try:
+        #     # 2. Delete matches that do NOT start with the target patch string
+        #     # The regex "^14.23" ensures we match the start of the version string.
+        #     delete_result = matches_col.delete_many(
+        #         {"info.gameVersion": {"$not": {"$regex": f"^{target_patch}"}}}
+        #     )
+        #
+        #     if delete_result.deleted_count > 0:
+        #         logger.info(
+        #             f"Purged {delete_result.deleted_count} matches from older patches."
+        #         )
+        #     else:
+        #         logger.info("Database is already clean (no old patches found).")
+        # except Exception as e:
+        #     logger.error(f"Cleanup Error: {e}")
     else:
         logger.warning(
             "Skipping DB cleanup: Could not determine current patch from Riot API."
