@@ -220,19 +220,42 @@ def fetch_data():
     for region_code, region_name in REGIONS:
         logger.info(f"=== Scan: {region_name} ({region_code}) ===")
         try:
-            # Try to get top players from Challenger ladder
+            # Tiered fallback: Challenger → Grandmaster → Master → Database → Pro Players
+            entries = []
+
+            # Try Challenger
             challenger = smart_request(
                 watcher.league.challenger_by_queue, region_code, "RANKED_SOLO_5x5"
             )
-            entries = []
-            if challenger:
+            if challenger and "entries" in challenger:
                 entries = challenger["entries"]  # type: ignore
+                logger.info(f"Found {len(entries)} Challenger players")
 
-            # If ladder is empty (e.g., season reset), use fallback strategies
+            # If not enough, try Grandmaster
             if len(entries) < PLAYER_COUNT:
-                logger.info(f"Ladder has only {len(entries)} players (season reset?). Using fallback players...")
+                logger.info(f"Not enough Challenger players, trying Grandmaster...")
+                grandmaster = smart_request(
+                    watcher.league.grandmaster_by_queue, region_code, "RANKED_SOLO_5x5"
+                )
+                if grandmaster and "entries" in grandmaster:
+                    entries.extend(grandmaster["entries"])  # type: ignore
+                    logger.info(f"Added {len(grandmaster['entries'])} Grandmaster players")  # type: ignore
 
-                # Strategy 1: Try to get PUUIDs from recent matches in database
+            # If still not enough, try Master
+            if len(entries) < PLAYER_COUNT:
+                logger.info(f"Not enough GM players, trying Master...")
+                master = smart_request(
+                    watcher.league.master_by_queue, region_code, "RANKED_SOLO_5x5"
+                )
+                if master and "entries" in master:
+                    entries.extend(master["entries"])  # type: ignore
+                    logger.info(f"Added {len(master['entries'])} Master players")  # type: ignore
+
+            # If STILL not enough (early season reset), use database + pro players
+            if len(entries) < PLAYER_COUNT:
+                logger.info(f"Only {len(entries)} ranked players found. Using database + pro player fallback...")
+
+                # Strategy 1: Get PUUIDs from recent matches in database
                 pipeline = [
                     {"$match": {"_region": region_code}},
                     {"$sort": {"info.gameCreation": -1}},
@@ -242,6 +265,7 @@ def fetch_data():
                     {"$limit": PLAYER_COUNT}
                 ]
                 fallback_puuids = [doc["_id"] for doc in matches_col.aggregate(pipeline)]
+                logger.info(f"Found {len(fallback_puuids)} players from database")
 
                 # Strategy 2: If database is also empty, use hardcoded pro players
                 if len(fallback_puuids) < PLAYER_COUNT and region_code in FALLBACK_PRO_PLAYERS:
@@ -250,12 +274,10 @@ def fetch_data():
 
                     for riot_id in pro_names:
                         try:
-                            # Split GameName#TAG format
                             if "#" not in riot_id:
                                 continue
                             game_name, tag_line = riot_id.split("#", 1)
 
-                            # Look up account by Riot ID using RiotWatcher
                             routing = "asia" if region_code == "kr" else "europe"
                             account = smart_request(
                                 riot_watcher.account.by_riot_id, routing,
@@ -268,15 +290,15 @@ def fetch_data():
                             logger.warning(f"  Could not find {riot_id}: {e}")
                             continue
 
-                logger.info(f"Found {len(fallback_puuids)} fallback players total.")
-
-                # Extend entries with fallback players
+                # Add fallback PUUIDs as entries
                 entries.extend([{"puuid": puuid} for puuid in fallback_puuids[:PLAYER_COUNT]])
-                entries = entries[:PLAYER_COUNT]
-            else:
-                entries = sorted(
-                    entries, key=lambda x: x.get("leaguePoints", 0), reverse=True
-                )[:PLAYER_COUNT]
+
+            # Sort by LP and take top PLAYER_COUNT
+            entries = sorted(
+                entries, key=lambda x: x.get("leaguePoints", 0), reverse=True
+            )[:PLAYER_COUNT]
+
+            logger.info(f"Tracking {len(entries)} players total")
 
             for i, entry in enumerate(entries):
                 try:
