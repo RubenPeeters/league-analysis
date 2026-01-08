@@ -157,6 +157,39 @@ def analyze_enemy_comp(match_info, my_team_id):
 
 # --- 6. MAIN LOGIC ---
 def fetch_data():
+    # === NEW: DB CLEANUP PHASE ===
+    # We use 'globals().get' to safely access 'latest_ver' from Section 4
+    # without crashing if the static data request failed previously.
+    current_full_ver = globals().get("latest_ver")
+
+    if current_full_ver:
+        # 1. Calculate the short patch (e.g. "14.23")
+        target_patch = get_short_version(current_full_ver)
+
+        logger.info(f"--- DB MAINTENANCE ---")
+        logger.info(f"Target Patch: {target_patch}. Pruning old data...")
+
+        try:
+            # 2. Delete matches that do NOT start with the target patch string
+            # The regex "^14.23" ensures we match the start of the version string.
+            delete_result = matches_col.delete_many(
+                {"info.gameVersion": {"$not": {"$regex": f"^{target_patch}"}}}
+            )
+
+            if delete_result.deleted_count > 0:
+                logger.info(
+                    f"Purged {delete_result.deleted_count} matches from older patches."
+                )
+            else:
+                logger.info("Database is already clean (no old patches found).")
+        except Exception as e:
+            logger.error(f"Cleanup Error: {e}")
+    else:
+        logger.warning(
+            "Skipping DB cleanup: Could not determine current patch from Riot API."
+        )
+
+    # === EXISTING LOGIC STARTS HERE ===
     stats = {"new": 0}
 
     # PHASE 1: CRAWLER
@@ -207,10 +240,20 @@ def fetch_data():
                         )
                         if match_detail:
                             match_detail["_region"] = region_code
+
+                            # === OPTIONAL: IMMEDIATE FILTER ===
+                            # If you want to avoid saving old matches entirely (saving write Ops),
+                            # check the version before inserting.
+                            match_ver = get_short_version(
+                                match_detail.get("info", {}).get("gameVersion")
+                            )
+                            if target_patch and match_ver != target_patch:
+                                continue  # Skip saving if it's an old patch match
+
                             try:
                                 matches_col.insert_one(match_detail)
                                 stats["new"] += 1
-                                logger.info(f"   [+] Saved: {match_id}")
+                                logger.info(f"  [+] Saved: {match_id}")
                             except:
                                 pass
 
@@ -221,22 +264,11 @@ def fetch_data():
             logger.error(f"Region error: {e}")
 
     # PHASE 2: ANALYST
+    # (Rest of your original code remains exactly the same from here down)
     logger.info("Generating Frontend JSON...")
 
-    all_versions = matches_col.distinct("info.gameVersion")
-    valid_versions = [v for v in all_versions if v and v[0].isdigit()]
-
-    def version_key(v):
-        try:
-            return tuple(map(int, v.split(".")[:2]))
-        except:
-            return (0, 0)
-
-    current_patch = (
-        get_short_version(max(valid_versions, key=version_key))
-        if valid_versions
-        else "14.1"
-    )
+    # Use the same patch version we got from Data Dragon API, not from database
+    current_patch = target_patch if current_full_ver else "14.1"
 
     total_games_db = matches_col.count_documents({})
     total_patch_games = matches_col.count_documents(
