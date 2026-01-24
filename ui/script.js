@@ -1,7 +1,6 @@
 let globalData = {};
-let currentRole = 'JUNGLE'; 
-let currentTime = 'patch';
-const DDRAGON_VER = "14.23.1"; 
+let currentRole = 'JUNGLE';
+let DDRAGON_VER = "14.23.1"; // Will be updated from data.json 
 
 // --- URL GENERATOR ---
 function getOpGgUrl(region, riotId) {
@@ -25,13 +24,6 @@ function setRole(role) {
     refreshTables();
 }
 
-function setTime(time) {
-    currentTime = time;
-    document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`btn-${time}`).classList.add('active');
-    refreshTables();
-}
-
 function refreshTables() {
     renderTable('kr');
     renderTable('euw1');
@@ -42,7 +34,6 @@ function openDetailView(champData) {
     // 1. Hide Dashboard, Show Detail
     document.getElementById('dashboard-view').classList.add('hidden');
     document.getElementById('role-nav').classList.add('hidden');
-    document.getElementById('time-controls').classList.add('hidden');
     document.getElementById('detail-view').classList.remove('hidden');
 
     // 2. Populate Header Info
@@ -107,11 +98,12 @@ function openDetailView(champData) {
     }
     // -------------------------------------
 
-    // 4. Populate Player Table
+    // 4. Populate Player Table (now filtered by role)
     const tbody = document.querySelector('#table-players tbody');
     tbody.innerHTML = '';
 
-    const players = globalData.leaderboards ? globalData.leaderboards[champName] : [];
+    const leaderboardKey = `${currentRole}:${champName}`;
+    const players = globalData.leaderboards ? globalData.leaderboards[leaderboardKey] : [];
 
     if (!players || players.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#666;">No individual player data found.</td></tr>';
@@ -146,7 +138,6 @@ function openDetailView(champData) {
 function closeDetailView() {
     document.getElementById('dashboard-view').classList.remove('hidden');
     document.getElementById('role-nav').classList.remove('hidden');
-    document.getElementById('time-controls').classList.remove('hidden');
     document.getElementById('detail-view').classList.add('hidden');
 }
 
@@ -158,12 +149,11 @@ function renderTable(regionKey) {
     tbody.innerHTML = '';
 
     if (!globalData.regions || !globalData.regions[regionKey]) return;
-    const timeData = globalData.regions[regionKey][currentTime];
-    if (!timeData || !timeData[currentRole]) {
+    const data = globalData.regions[regionKey][currentRole];
+    if (!data) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:#666;">No data found for ${currentRole}.</td></tr>`;
         return;
-    }
-    const data = timeData[currentRole]; 
+    } 
 
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px; color:#666;">No games recorded yet.</td></tr>';
@@ -199,12 +189,22 @@ function renderTable(regionKey) {
 
 function updateMetaInfo() {
     if (!globalData.meta) return;
-    const patchGames = (globalData.meta.patch_games || 0).toLocaleString();
     const totalGames = (globalData.meta.total_games || 0).toLocaleString();
     document.getElementById('meta-games').innerText = totalGames;
     document.getElementById('meta-patch').innerText = globalData.meta.current_patch || "--";
     document.getElementById('meta-updated').innerText = globalData.meta.last_updated || "--";
-    document.getElementById('btn-patch').innerText = `Current Patch (${patchGames})`;
+
+    // Update Data Dragon version from backend
+    if (globalData.meta.ddragon_version) {
+        DDRAGON_VER = globalData.meta.ddragon_version;
+    }
+
+    // Update subtitle with actual player count
+    const playerCount = globalData.meta.player_count || 20;
+    const subtitle = document.querySelector('.subtitle');
+    if (subtitle) {
+        subtitle.innerText = `Tracking the Top ${playerCount} Challengers in KR & EUW`;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

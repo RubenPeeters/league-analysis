@@ -416,16 +416,14 @@ def fetch_data():
     current_patch = target_patch if current_full_ver else "14.1"
 
     total_games_db = matches_col.count_documents({})
-    total_patch_games = matches_col.count_documents(
-        {"info.gameVersion": {"$regex": f"^{current_patch}"}}
-    )
 
     frontend_data = {
         "meta": {
             "total_games": total_games_db,
-            "patch_games": total_patch_games,
             "last_updated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "current_patch": current_patch,
+            "ddragon_version": current_full_ver or "14.23.1",
+            "player_count": PLAYER_COUNT,
         },
         "regions": {},
         "leaderboards": {},
@@ -435,10 +433,9 @@ def fetch_data():
     player_performance = {}
 
     for region_code, _ in REGIONS:
-        frontend_data["regions"][region_code] = {"season": {}, "patch": {}}
+        frontend_data["regions"][region_code] = {}
         for r in VALID_ROLES:
-            frontend_data["regions"][region_code]["season"][r] = []
-            frontend_data["regions"][region_code]["patch"][r] = []
+            frontend_data["regions"][region_code][r] = []
 
         cursor = matches_col.find({"_region": region_code})
         region_matches = []
@@ -498,11 +495,12 @@ def fetch_data():
 
                 c = p["champ"]
 
-                # --- LEADERBOARD LOGIC ---
-                if c not in player_performance:
-                    player_performance[c] = {}
-                if p["name"] not in player_performance[c]:
-                    player_performance[c][p["name"]] = {
+                # --- LEADERBOARD LOGIC (keyed by role:champion) ---
+                lb_key = f"{role_filter}:{c}"
+                if lb_key not in player_performance:
+                    player_performance[lb_key] = {}
+                if p["name"] not in player_performance[lb_key]:
+                    player_performance[lb_key][p["name"]] = {
                         "g": 0,
                         "w": 0,
                         "k": 0,
@@ -510,7 +508,7 @@ def fetch_data():
                         "a": 0,
                         "r": region_code,
                     }
-                pp = player_performance[c][p["name"]]
+                pp = player_performance[lb_key][p["name"]]
                 pp["g"] += 1
                 pp["k"] += p["k"]
                 pp["d"] += p["d"]
@@ -639,17 +637,11 @@ def fetch_data():
 
             return sorted(results, key=lambda x: x["pick_rate"], reverse=True)[:15]
 
-        patch_subset = [m for m in region_matches if m["patch"] == current_patch]
-
         for r in VALID_ROLES:
-            frontend_data["regions"][region_code]["season"][r] = aggregate(
-                region_matches, r
-            )
-            frontend_data["regions"][region_code]["patch"][r] = aggregate(
-                patch_subset, r
-            )
+            frontend_data["regions"][region_code][r] = aggregate(region_matches, r)
 
-    for champ, players in player_performance.items():
+    # Leaderboards are keyed by "ROLE:ChampionName"
+    for lb_key, players in player_performance.items():
         lb = []
         for pname, s in players.items():
             kda = round((s["k"] + s["a"]) / (s["d"] if s["d"] > 0 else 1), 2)
@@ -663,7 +655,7 @@ def fetch_data():
                     "kda": kda,
                 }
             )
-        frontend_data["leaderboards"][champ] = sorted(
+        frontend_data["leaderboards"][lb_key] = sorted(
             lb, key=lambda x: (x["games"], x["win_rate"]), reverse=True
         )
 
