@@ -151,6 +151,57 @@ def extract_bans(match_info):
     ]
 
 
+def slim_match(match_detail, region_code):
+    """Extract only the fields needed for analysis to reduce storage."""
+    info = match_detail.get("info", {})
+
+    slim_participants = []
+    for p in info.get("participants", []):
+        slim_participants.append({
+            "puuid": p.get("puuid"),
+            "championId": p.get("championId"),
+            "championName": p.get("championName"),
+            "teamId": p.get("teamId"),
+            "teamPosition": p.get("teamPosition"),
+            "win": p.get("win"),
+            "kills": p.get("kills"),
+            "deaths": p.get("deaths"),
+            "assists": p.get("assists"),
+            "item0": p.get("item0", 0),
+            "item1": p.get("item1", 0),
+            "item2": p.get("item2", 0),
+            "item3": p.get("item3", 0),
+            "item4": p.get("item4", 0),
+            "item5": p.get("item5", 0),
+            "riotIdGameName": p.get("riotIdGameName"),
+            "riotIdTagline": p.get("riotIdTagline"),
+            "summonerName": p.get("summonerName"),
+            "physicalDamageDealtToChampions": p.get("physicalDamageDealtToChampions", 0),
+            "magicDamageDealtToChampions": p.get("magicDamageDealtToChampions", 0),
+            "trueDamageDealtToChampions": p.get("trueDamageDealtToChampions", 0),
+        })
+
+    slim_teams = []
+    for team in info.get("teams", []):
+        slim_teams.append({
+            "teamId": team.get("teamId"),
+            "bans": team.get("bans", []),
+        })
+
+    return {
+        "_region": region_code,
+        "metadata": {
+            "matchId": match_detail.get("metadata", {}).get("matchId"),
+        },
+        "info": {
+            "gameVersion": info.get("gameVersion"),
+            "gameCreation": info.get("gameCreation"),
+            "teams": slim_teams,
+            "participants": slim_participants,
+        },
+    }
+
+
 def analyze_enemy_comp(match_info, my_team_id):
     enemies = [p for p in match_info["participants"] if p["teamId"] != my_team_id]
     total_phys = sum(p.get("physicalDamageDealtToChampions", 0) for p in enemies)
@@ -190,24 +241,20 @@ def fetch_data():
 
         logger.info(f"--- DB MAINTENANCE ---")
         logger.info(f"Target Patch: {target_patch}.")
-        logger.info("CLEANUP TEMPORARILY DISABLED: Keeping old patch data during season reset.")
 
-        # TEMPORARILY DISABLED: Uncomment after Challenger ladder populates (1-2 weeks)
-        # try:
-        #     # 2. Delete matches that do NOT start with the target patch string
-        #     # The regex "^14.23" ensures we match the start of the version string.
-        #     delete_result = matches_col.delete_many(
-        #         {"info.gameVersion": {"$not": {"$regex": f"^{target_patch}"}}}
-        #     )
-        #
-        #     if delete_result.deleted_count > 0:
-        #         logger.info(
-        #             f"Purged {delete_result.deleted_count} matches from older patches."
-        #         )
-        #     else:
-        #         logger.info("Database is already clean (no old patches found).")
-        # except Exception as e:
-        #     logger.error(f"Cleanup Error: {e}")
+        try:
+            delete_result = matches_col.delete_many(
+                {"info.gameVersion": {"$not": {"$regex": f"^{target_patch}"}}}
+            )
+
+            if delete_result.deleted_count > 0:
+                logger.info(
+                    f"Purged {delete_result.deleted_count} matches from older patches."
+                )
+            else:
+                logger.info("Database is already clean (no old patches found).")
+        except Exception as e:
+            logger.error(f"Cleanup Error: {e}")
     else:
         logger.warning(
             "Skipping DB cleanup: Could not determine current patch from Riot API."
@@ -336,8 +383,6 @@ def fetch_data():
                             watcher.match.by_id, region_code, match_id
                         )
                         if match_detail:
-                            match_detail["_region"] = region_code
-
                             # === OPTIONAL: IMMEDIATE FILTER ===
                             # If you want to avoid saving old matches entirely (saving write Ops),
                             # check the version before inserting.
@@ -347,8 +392,11 @@ def fetch_data():
                             if target_patch and match_ver != target_patch:
                                 continue  # Skip saving if it's an old patch match
 
+                            # Store only essential fields to reduce storage usage
+                            slimmed = slim_match(match_detail, region_code)
+
                             try:
-                                matches_col.insert_one(match_detail)
+                                matches_col.insert_one(slimmed)
                                 stats["new"] += 1
                                 logger.info(f"  [+] Saved: {match_id}")
                             except:
