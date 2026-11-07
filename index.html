@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Meta Scout</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="header-container">
+        <div class="title-section">
+            <div style="display:flex; align-items:center; gap: 10px;">
+                <h1>Elite Meta Scout</h1>
+                <button class="info-icon-btn" onclick="toggleModal()" title="About">?</button>
+            </div>
+            <div class="subtitle">Tracking the Top 20 Challengers in KR & EUW</div>
+        </div>
+
+        <div class="role-selector" id="role-nav">
+            <button class="role-btn" onclick="setRole('TOP')" title="Top"><img
+                    src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-top.svg"
+                    class="role-icon"><span>TOP</span></button>
+            <button class="role-btn active" onclick="setRole('JUNGLE')" title="Jungle"><img
+                    src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-jungle.svg"
+                    class="role-icon"><span>JUNGLE</span></button>
+            <button class="role-btn" onclick="setRole('MIDDLE')" title="Mid"><img
+                    src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-middle.svg"
+                    class="role-icon"><span>MID</span></button>
+            <button class="role-btn" onclick="setRole('BOTTOM')" title="Bot"><img
+                    src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-bottom.svg"
+                    class="role-icon"><span>BOT</span></button>
+            <button class="role-btn" onclick="setRole('UTILITY')" title="Support"><img
+                    src="https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-static-assets/global/default/svg/position-utility.svg"
+                    class="role-icon"><span>SUP</span></button>
+        </div>
+
+        <div class="info-card">
+            <div class="info-item"><span class="info-label">Patch</span><span class="info-value highlight"
+                    id="meta-patch">--</span></div>
+            <div class="info-item"><span class="info-label">Games</span><span class="info-value"
+                    id="meta-games">--</span></div>
+            <div class="info-item"><span class="info-label">Updated</span><span class="info-value small-text"
+                    id="meta-updated">--</span></div>
+        </div>
+    </div>
+
+
+    <div class="grid-container" id="dashboard-view">
+        <div class="region-card">
+            <div class="region-header">🇰🇷 KOREA (KR)</div>
+            <table id="table-kr">
+                <thead>
+                    <tr>
+                        <th width="5%">#</th>
+                        <th class="align-left">Champion</th>
+                        <th>Pick</th>
+                        <th>Ban</th>
+                        <th>Win</th>
+                        <th>KDA</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div class="region-card">
+            <div class="region-header">🇪🇺 EUROPE WEST (EUW)</div>
+            <table id="table-euw1">
+                <thead>
+                    <tr>
+                        <th width="5%">#</th>
+                        <th class="align-left">Champion</th>
+                        <th>Pick</th>
+                        <th>Ban</th>
+                        <th>Win</th>
+                        <th>KDA</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="detail-container hidden" id="detail-view">
+        <div class="detail-header">
+            <button class="back-btn" onclick="closeDetailView()">← Back</button>
+
+            <div class="detail-content-wrapper">
+                <div class="detail-title-group">
+                    <img id="detail-img" src="" class="detail-champ-img">
+                    <div>
+                        <h2 id="detail-name">Champion</h2>
+                        <span class="detail-subtitle">Pro Performance Data</span>
+                    </div>
+                </div>
+
+                <div class="build-section">
+                    <span class="build-label">MOST COMMON PRO BUILD</span>
+                    <div class="item-row" id="detail-items">
+                    </div>
+                </div>
+            </div>
+
+            <div id="context-builds" class="context-grid">
+            </div>
+        </div>
+
+        <div class="region-card">
+            <div class="region-header">TOP PERFORMING PLAYERS</div>
+            <table id="table-players">
+                <thead>
+                    <tr>
+                        <th class="align-left">Player</th>
+                        <th>Region</th>
+                        <th>Games</th>
+                        <th>Win Rate</th>
+                        <th>KDA</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="about-modal" class="modal-overlay" onclick="toggleModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="close-btn" onclick="toggleModal()">&times;</button>
+            <h2>Elite Meta Scout</h2>
+            <p class="modal-subtitle">Not a standard Tier List. A Leading Indicator.</p>
+            <div class="modal-grid">
+                <div class="modal-box">
+                    <h3>🔍 What is this?</h3>
+                    <p>We track the <strong>Top 20 Challengers</strong>. This shows what Pros are playing
+                        <strong>today</strong>.
+                    </p>
+                </div>
+                <div class="modal-box">
+                    <h3>📊 How to read it?</h3>
+                    <ul>
+                        <li><strong style="color:var(--accent)">High Pick:</strong> Meta defined by Pros.</li>
+                        <li><strong style="color:var(--danger)">High Ban:</strong> God Tier.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">Updated every 6 hours. Sourced from Riot API.</div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
