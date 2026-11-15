@@ -35,3 +35,8 @@ The adoption commit did not touch `src/main.py`; it is excluded from ruff in `py
 
 The meta of each patch is kept in `history.json` on the `data` branch, one entry per patch. `update_data.yml` copies it into `data/` before the generator runs and commits it back afterwards; the site publishes it with `data.json`. The entries for 16.2 to 16.20 were backfilled by `analysis/meta_over_patches.py` from the `data.json` versions in the history of `main`; they are marked `"source": "backfill"` and hold only the 15 most-picked champions per role, blue side only, with estimated game counts.
 **Why:** Ruben asked for a page on the site showing how the meta changed over the patches. MongoDB is purged at every patch, so the per-patch result has to be stored when it is produced; a file on the `data` branch keeps it in git next to the snapshots and keeps the generator free of extra database state.
+
+## 2026-11-15: meta over patches page reads history.json as is
+
+`ui/history.html` shows `history.json` as a grid of pick rates per champion and patch. Its rows are every champion that was in the top 15 by pick rate in at least one patch. They are ordered by the number of patches in the top 15, then by the mean pick rate over the patches where the champion is listed. A champion that is not listed shows as an empty cell. The logic lives in `buildView` in `ui/history.js`, which `tests/test_history_page.py` runs through node (skipped if node is missing).
+**Why:** backfilled patches only list the top 15, so a missing entry is unknown, not 0, and counting it as 0 would distort both the colours and the order (#12). Testing the JavaScript through node keeps `make check` as the only gate without adding a JS toolchain.
