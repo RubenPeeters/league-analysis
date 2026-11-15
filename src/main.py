@@ -6,6 +6,7 @@ import threading
 import time
 from collections import Counter
 from datetime import datetime, timezone
+from statistics import median
 
 import requests
 from dotenv import load_dotenv
@@ -827,6 +828,8 @@ def summarize_match(m, champ_id_to_name, tank_champs, damage_shares):
     }
 
     summary = {"patch": version, "bans": bans, "participants": []}
+    # None or missing: no timeline stored for the match.
+    timeline = m.get("timeline") or {}
 
     for p in info.get("participants", []):
         champ_id_to_name[p["championId"]] = p["championName"]
@@ -853,6 +856,7 @@ def summarize_match(m, champ_id_to_name, tank_champs, damage_shares):
                 "a": p["assists"],
                 "items": items,
                 "context": my_context,
+                "timeline": timeline.get(p.get("puuid")),
             }
         )
     return summary
@@ -899,6 +903,77 @@ def rune_stats(s):
     return {"rune_games": rg, "runes": runes, "spells": spells}
 
 
+ORDER_LENGTH = 3
+FIRST_ITEMS = 5
+ITEM_PATHS = 3
+SKILL_KEYS = {1: "Q", 2: "W", 3: "E", 4: "R"}
+MAX_RANK = 5
+
+
+def timeline_orders(tl, valid_items, boots):
+    """From one participant's slim timeline: (finished non-boot items in order of first
+    purchase, (first boots, finished items bought before them) or None, slots of the first
+    three level-ups or None, Q/W/E slots in the order they reach rank 5 or None)."""
+    # Sales and repeat purchases are ignored: an item counts at its first purchase.
+    order, first_boots = [], None
+    for e in sorted((e for e in tl["items"] if e["e"] == "buy"), key=lambda e: e["t"]):
+        i = e["id"]
+        if i in boots:
+            if first_boots is None:
+                first_boots = (i, len(order))
+        elif (valid_items is None or i in valid_items) and i not in order:
+            order.append(i)
+
+    slots = [x["slot"] for x in sorted(tl["skills"], key=lambda x: x["t"])]
+    start = tuple(slots[:ORDER_LENGTH]) if len(slots) >= ORDER_LENGTH else None
+    ranks, maxed = Counter(), []
+    for slot in slots:
+        ranks[slot] += 1
+        if slot in (1, 2, 3) and ranks[slot] == MAX_RANK:
+            maxed.append(slot)
+    # With two maxed, the third was still below rank 5 when the game ended: it comes last.
+    max_order = tuple(maxed + [x for x in (1, 2, 3) if x not in maxed]) if len(maxed) >= 2 else None
+    return order, first_boots, start, max_order
+
+
+def skill_letters(slots):
+    return [SKILL_KEYS.get(x, str(x)) for x in slots]
+
+
+def order_stats(s):
+    """Item and skill order of the champion over its non-remake games with a timeline."""
+    tg = s["tg"]
+    first = sorted(s["first"].items(), key=lambda x: (-x[1][0], x[0]))[:FIRST_ITEMS]
+    paths = sorted(s["paths"].items(), key=lambda x: (-x[1], x[0]))[:ITEM_PATHS]
+    boots_position = None
+    if s["boots_before"]:
+        b, before = max(s["boots_before"].items(), key=lambda x: (len(x[1]), -x[0]))
+        boots_position = {"id": b, "games": len(before), "median_before": median(before)}
+
+    def top_skill(counts):
+        if not counts:
+            return None
+        order, g = min(counts.items(), key=lambda x: (-x[1], x[0]))
+        return {"order": skill_letters(order), "games": g}
+
+    return {
+        "timeline_games": tg,
+        "first_items": [
+            {
+                "id": i,
+                "games": g,
+                "share": round(g / tg * 100, 1),
+                "win_rate": round(w / g * 100, 1),
+            }
+            for i, (g, w) in first
+        ],
+        "paths": [{"ids": list(path), "games": g} for path, g in paths],
+        "boots_position": boots_position,
+        "skill_start": top_skill(s["skill_start"]),
+        "skill_max": top_skill(s["skill_max"]),
+    }
+
+
 def new_champ_stats():
     return {
         "g": 0,
@@ -915,6 +990,12 @@ def new_champ_stats():
         "pages": {},  # (keystone, primary style, secondary style) -> [games, wins]
         "selections": {},  # page -> Counter of (3 primary, 2 secondary, 3 shards)
         "spells": Counter(),  # sorted spell pair -> games
+        "tg": 0,  # games that are not remakes and have a timeline
+        "first": {},  # first finished item -> [games, wins]
+        "paths": Counter(),  # first three finished items -> games
+        "boots_before": {},  # first boots -> finished items bought before them, per game
+        "skill_start": Counter(),  # slots of the first three level-ups -> games
+        "skill_max": Counter(),  # Q/W/E slots in order of reaching rank 5 -> games
     }
 
 
@@ -1007,6 +1088,25 @@ def aggregate(
             if None not in p["spells"]:
                 s["spells"][tuple(sorted(p["spells"]))] += 1
 
+        # --- ITEM AND SKILL ORDER: only games stored with a timeline ---
+        if p.get("timeline"):
+            s["tg"] += 1
+            order, first_boots, start, max_order = timeline_orders(
+                p["timeline"], valid_items, boots
+            )
+            if order:
+                fi = s["first"].setdefault(order[0], [0, 0])
+                fi[0] += 1
+                fi[1] += bool(p["win"])
+            if len(order) >= ORDER_LENGTH:
+                s["paths"][tuple(order[:ORDER_LENGTH])] += 1
+            if first_boots:
+                s["boots_before"].setdefault(first_boots[0], []).append(first_boots[1])
+            if start:
+                s["skill_start"][start] += 1
+            if max_order:
+                s["skill_max"][max_order] += 1
+
     # 2. Count Bans (Global look at the match set)
     for m in match_list:
         for bid in m["bans"]:
@@ -1045,6 +1145,7 @@ def aggregate(
                     "boots": item_shares(s["boots"], s["ig"]),
                     "matchups": matchup_cards(s),
                     **rune_stats(s),
+                    **order_stats(s),
                 }
             )
 
