@@ -1,5 +1,12 @@
 """Unit tests for src/main.py on hand-written fixtures; no Riot API, no MongoDB."""
 
+import json
+from types import SimpleNamespace
+
+import requests
+from pymongo.errors import DuplicateKeyError
+from riotwatcher import ApiError
+
 import main
 from main import (
     aggregate,
@@ -255,3 +262,100 @@ def test_meta_and_regions_shape():
     assert list(data["regions"]) == ["kr", "euw1"]
     assert list(data["regions"]["kr"]) == ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]
     assert data["regions"]["kr"]["TOP"] == []
+
+
+# --- main() with a fake Riot client and a fake collection ---
+
+
+def api_error(status):
+    response = requests.Response()
+    response.status_code = status
+    return ApiError(response=response)
+
+
+class FakeCollection:
+    def __init__(self):
+        self.docs = []
+        self.deletes = []
+
+    def find(self, query=None, projection=None):
+        return list(self.docs) if not query else []
+
+    def aggregate(self, pipeline):
+        return []
+
+    def insert_one(self, doc):
+        self.docs.append(doc)
+
+    def delete_many(self, query):
+        self.deletes.append(query)
+        return SimpleNamespace(deleted_count=0)
+
+
+def fake_watcher(failing_regions=(), status=500):
+    def ladder(region, queue):
+        if region in failing_regions:
+            raise api_error(status)
+        return {"entries": [{"puuid": f"pu-{region}", "leaguePoints": 1}]}
+
+    def by_id(region, match_id):
+        return match([player(1, "Garen", 100, "TOP")], region=region, version="15.22.1")
+
+    return SimpleNamespace(
+        league=SimpleNamespace(
+            challenger_by_queue=ladder, grandmaster_by_queue=ladder, masters_by_queue=ladder
+        ),
+        match=SimpleNamespace(
+            matchlist_by_puuid=lambda region, puuid, count: [f"{region}_1"], by_id=by_id
+        ),
+    )
+
+
+def run_main(monkeypatch, tmp_path, watcher):
+    col = FakeCollection()
+    monkeypatch.setenv("RIOT_API_KEY", "key")
+    monkeypatch.setenv("MONGODB_URI", "uri")
+    monkeypatch.setenv("PLAYER_COUNT", "1")
+    monkeypatch.setattr(main, "load_dotenv", lambda: None)
+    monkeypatch.setattr(main, "DATA_FOLDER", str(tmp_path))
+    monkeypatch.setattr(main, "OUTPUT_FILE", str(tmp_path / "data.json"))
+    monkeypatch.setattr(main, "LolWatcher", lambda key: watcher)
+    monkeypatch.setattr(main, "RiotWatcher", lambda key: SimpleNamespace())
+    monkeypatch.setattr(main, "connect_db", lambda uri: col)
+    monkeypatch.setattr(main, "load_static_data", lambda: ("15.22.1", set(), None))
+    return main.main(), col, tmp_path / "data.json"
+
+
+def test_rejected_key_stops_before_purge_and_write(monkeypatch, tmp_path, caplog):
+    code, col, out = run_main(monkeypatch, tmp_path, fake_watcher(("kr", "euw1"), status=401))
+    assert code != 0
+    assert not out.exists()
+    assert col.deletes == []
+    assert "rejected the key" in caplog.text
+
+
+def test_every_region_failing_stops_before_purge_and_write(monkeypatch, tmp_path):
+    code, col, out = run_main(monkeypatch, tmp_path, fake_watcher(("kr", "euw1")))
+    assert code != 0
+    assert not out.exists()
+    assert col.deletes == []
+
+
+def test_one_failing_region_still_writes(monkeypatch, tmp_path):
+    code, col, out = run_main(monkeypatch, tmp_path, fake_watcher(("kr",)))
+    assert code == 0
+    assert len(col.deletes) == 1
+    data = json.loads(out.read_text())
+    assert data["meta"]["total_games"] == 1
+    assert data["regions"]["euw1"]["TOP"][0]["name"] == "Garen"
+
+
+def test_insert_error_other_than_duplicate_is_logged(monkeypatch, tmp_path, caplog):
+    def insert_one(doc):
+        raise DuplicateKeyError("dup") if doc["_region"] == "kr" else OSError("disk full")
+
+    monkeypatch.setattr(FakeCollection, "insert_one", lambda self, doc: insert_one(doc))
+    code, _, _ = run_main(monkeypatch, tmp_path, fake_watcher())
+    assert code == 0
+    assert "Could not save euw1_1: disk full" in caplog.text
+    assert "Could not save kr_1" not in caplog.text

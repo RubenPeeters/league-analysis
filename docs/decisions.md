@@ -20,3 +20,8 @@ The adoption commit did not touch `src/main.py`; it is excluded from ruff in `py
 
 `src/main.py` does nothing at import; `main()` builds the clients, the collection and the Data Dragon data and passes them down. The crawler (`crawl`) is separate from the analysis (`build_frontend_data` and its helpers), which is pure. It stays one file at the same path, and is linted.
 **Why:** to make it testable (#2) without touching `update_data.yml`, which calls `python src/main.py` and which the forge bot cannot change. Tests import it through `pythonpath = ["src"]` in `pyproject.toml`.
+
+## 2026-11-15: a failed Riot run writes nothing and purges nothing
+
+`main()` exits 1 without purging the database or writing `data.json` when the Riot API rejects the key (401/403) or when no region could be scanned. The purge of old-patch matches now runs after the crawl instead of before it.
+**Why:** a rejected key produced a green run that published an empty `data.json` every 6 hours (#3). A non-zero exit stops `update_data.yml` before its commit and deploy, so the site keeps its last good data; purging only after the API has answered means a broken key cannot empty the database.
