@@ -40,15 +40,21 @@ jobs:
           LOG_LEVEL: INFO
         run: python src/main.py
 
-      # 2. COMMIT DATA BACK TO MAIN (So you keep your history)
-      - name: Commit Data to Main
+      # 2. COMMIT DATA TO THE `data` BRANCH (So you keep your history; main is protected)
+      - name: Commit Data to data branch
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          git add data/data.json
+          git fetch --depth=1 origin data
+          git worktree add --detach _data FETCH_HEAD
+          cp data/data.json _data/data.json
+          cd _data
+          git add data.json
           # Only commit if there are changes
-          git diff --quiet && git diff --staged --quiet || git commit -m "Auto-update data [skip ci]"
-          git push
+          git diff --staged --quiet || git commit -m "Auto-update data"
+          git push origin HEAD:data
+          cd ..
+          git worktree remove --force _data
 
       # 3. ASSEMBLE THE SITE (The Magic Step)
       - name: Assemble Website

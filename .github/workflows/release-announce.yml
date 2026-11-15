@@ -1,0 +1,57 @@
+name: Release announce
+# When a dev -> main release PR is merged: publish its release notes (the block forge
+# writes between the forge:release-notes markers, edited by the owner before merging)
+# as a GitHub Release, and post them to Discord if DISCORD_RELEASE_WEBHOOK is set.
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  announce:
+    if: github.event.pull_request.merged && github.event.pull_request.head.ref == 'dev'
+    runs-on: ubuntu-latest
+    env:
+      # passed via env, never interpolated into the script: the body is free text
+      PR_BODY: ${{ github.event.pull_request.body }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+      REPO: ${{ github.repository }}
+      WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Extract release notes
+        run: |
+          python3 - <<'PY'
+          import os, re
+          body = os.environ.get("PR_BODY") or ""
+          m = re.search(r"<!-- forge:release-notes -->(.*?)<!-- /forge:release-notes -->", body, re.S)
+          notes = (m.group(1) if m else body).strip() or "No release notes."
+          open("notes.md", "w").write(notes + "\n")
+          PY
+      - name: Create GitHub Release
+        id: release
+        run: |
+          tag="release-$(date -u +%Y%m%d-%H%M)"
+          gh release create "$tag" -R "$REPO" --target main --title "Release $(date -u +%Y-%m-%d)" --notes-file notes.md
+          echo "url=$(gh release view "$tag" -R "$REPO" --json url --jq .url)" >> "$GITHUB_OUTPUT"
+      - name: Post to Discord
+        env:
+          RELEASE_URL: ${{ steps.release.outputs.url }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then echo "No DISCORD_RELEASE_WEBHOOK secret: skipping Discord."; exit 0; fi
+          python3 - <<'PY'
+          import json, os
+          notes = open("notes.md").read().strip()
+          if len(notes) > 3900:  # Discord embed description limit is 4096
+              notes = notes[:3900].rsplit("\n", 1)[0] + "\n…"
+          payload = {"embeds": [{
+              "title": f"New release of {os.environ['REPO'].split('/')[1]}",
+              "url": os.environ["RELEASE_URL"],
+              "description": notes,
+              "color": 0x5865F2,
+          }], "allowed_mentions": {"parse": []}}
+          open("payload.json", "w").write(json.dumps(payload))
+          PY
+          curl -fsS -H "Content-Type: application/json" -d @payload.json "$WEBHOOK"
+          echo "posted to Discord"

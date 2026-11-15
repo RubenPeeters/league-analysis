@@ -10,3 +10,15 @@ dependencies = [
     "riotwatcher>=3.3.1",
     "tqdm>=4.67.1",
 ]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.ruff]
+line-length = 100
+# src/main.py predates the linter and is left as it was at adoption (2026-11-15);
+# drop this exclusion when it is restructured.
+extend-exclude = ["src/main.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

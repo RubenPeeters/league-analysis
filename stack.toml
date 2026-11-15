@@ -1,0 +1,13 @@
+# Adopted into forge on 2026-11-15 from an existing script project; follows forge's python-package
+# template except where noted.
+[stack]
+language = "python"
+python = ">=3.10"          # the project's own floor (template: >=3.12)
+env = "uv"                 # uv sync / uv run; uv.lock committed
+build_backend = "none"     # a script, not an installable package (template: hatchling)
+layout = "script"          # src/main.py, as it was (template: src/<pkg>)
+lint = "ruff"              # line-length 100
+test = "pytest"
+ci = "github-actions"
+publish = "github-pages"   # update_data.yml builds ui/ + data.json and pushes gh-pages
+lock = "uv lock"
