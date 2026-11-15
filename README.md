@@ -59,8 +59,10 @@ Then open http://localhost:8000/ui/.
 ## Web service (player lookup)
 
 `src/web.py` needs `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_GUILD_ID`,
-`DISCORD_ROLE_ID`, `SESSION_SECRET` and `PUBLIC_URL` (see `.env.example`) and refuses to start
-without them. On the server, `docker compose up -d --build` runs it on `127.0.0.1:8000` behind
+`DISCORD_ROLE_ID`, `SESSION_SECRET`, `PUBLIC_URL`, `RIOT_API_KEY` and `MONGODB_URI` (see
+`.env.example`) and refuses to start without them. `LOOKUP_REUSE_HOURS` (default 6) and
+`LOOKUPS_PER_DAY` (default 10) are optional. Run it as a single process: the lookup worker is a
+thread inside it. On the server, `docker compose up -d --build` runs it on `127.0.0.1:8000` behind
 Caddy. Its session cookie is `Secure`, so login only works over https.
 
 ## Checks

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block head %}{% if job.state in ("queued", "running") %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
+{% block content %}
+<p><a class="page-link" href="/">← New lookup</a></p>
+<h2>{{ job.riot_id }} ({{ regions[job.region] }})</h2>
+{% if job.state == "queued" %}
+<p>Waiting in the queue. This page refreshes itself.</p>
+{% elif job.state == "running" %}
+<p>Downloading matches{% if job.progress and job.progress.total %}: {{ job.progress.done }} of {{ job.progress.total }} done{% endif %}. This page refreshes itself.</p>
+{% elif job.state == "failed" %}
+<p role="alert">The lookup failed:
+    {% if job.reason == "unknown_riot_id" %}Riot has no player with this Riot ID.
+    {% elif job.reason == "riot_key_rejected" %}the Riot API key was rejected. Ruben has to renew it.
+    {% else %}something went wrong during the download or the analysis.{% endif %}
+</p>
+{% else %}
+{% set r = job.result %}
+{% set n = r.names %}
+{% set cdn = "https://ddragon.leagueoflegends.com/cdn/" ~ n.version %}
+{% macro champ(name) %}<img class="small-item-icon" src="{{ cdn }}/img/champion/{{ name }}.png" alt=""> {{ n.champions.get(name, name) }}{% endmacro %}
+{% macro item(id) %}{% set label = n["items"].get(id|string, id) %}<img class="small-item-icon" src="{{ cdn }}/img/item/{{ id }}.png" alt="{{ label }}" title="{{ label }}">{% endmacro %}
+{% macro rune(id) %}{% set x = n.runes.get(id|string) %}{% if x %}<img class="small-item-icon" src="https://ddragon.leagueoflegends.com/cdn/img/{{ x.icon }}" alt=""> {{ x.name }}{% else %}{{ id }}{% endif %}{% endmacro %}
+{% macro ladder(share) %}{{ "–" if share is none else share ~ "%" }}{% endmacro %}
+<p>Finished {{ job.finished_at.strftime("%Y-%m-%d %H:%M") }} UTC. {{ r.matches }} ranked solo games on patches {{ r.patches|join(", ") }}. "Top players" are the tracked top-ladder players of the same region, role and champion on patch {{ r.patches[0] }}.</p>
+{% if not r.champions %}
+<p>No champion has 5 or more of this player's games in these patches.</p>
+{% endif %}
+{% for c in r.champions %}
+<h3>{{ champ(c.champion) }} · {{ c.role }} · {{ c.games }} games · {{ c.win_rate }}% won</h3>
+<table>
+    <thead><tr><th class="align-left">Items</th><th>Player</th><th>Top players</th></tr></thead>
+    <tbody>
+        {% for i in c["items"] + c.boots %}
+        <tr><td class="align-left">{{ item(i.id) }} {{ n["items"].get(i.id|string, i.id) }}</td><td>{{ i.share }}%</td><td>{{ ladder(i.ladder_share) }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<table>
+    <thead><tr><th class="align-left">First item</th><th>Player</th><th>Top players</th></tr></thead>
+    <tbody>
+        {% for i in c.first_items %}
+        <tr><td class="align-left">{{ item(i.id) }} {{ n["items"].get(i.id|string, i.id) }}</td><td>{{ i.share }}%</td><td>{{ ladder(i.ladder_share) }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<table>
+    <thead><tr><th class="align-left">Rune page</th><th>Player</th><th>Top players</th></tr></thead>
+    <tbody>
+        {% for p in c.runes %}
+        <tr><td class="align-left">{{ rune(p.keystone) }} ({{ rune(p.primary_style) }}, {{ rune(p.secondary_style) }})</td><td>{{ p.share }}%</td><td>{{ ladder(p.ladder_share) }}</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p>
+    {% if c.starting_items %}Starting items: {% for s in c.starting_items %}{% for i in s.ids %}{{ item(i) }}{% endfor %} {{ s.games }}/{{ c.start_games }} games{% if not loop.last %}; {% endif %}{% endfor %}.{% endif %}
+    {% if c.skill_max %}Skill max order: {{ c.skill_max.order|join(" > ") }} ({{ c.skill_max.games }} games).{% endif %}
+</p>
+{% if c.opponents %}
+<table>
+    <thead><tr><th class="align-left">Lane opponent</th><th>Games</th><th>Won</th><th>Keystone</th><th>Start</th><th class="align-left">Items vs. other games</th></tr></thead>
+    <tbody>
+        {% for o in c.opponents %}
+        <tr>
+            <td class="align-left">{{ champ(o.champion) }}</td>
+            <td>{{ o.games }}</td>
+            <td>{{ o.win_rate }}%</td>
+            <td>{% if o.keystone %}{{ rune(o.keystone.id) }}{% endif %}</td>
+            <td>{% if o.starting_items %}{% for i in o.starting_items.ids %}{{ item(i) }}{% endfor %}{% endif %}</td>
+            <td class="align-left">{% for i in o["items"] %}{{ item(i.id) }} {{ i.share }}% vs. {{ i.other_share }}%{% if not loop.last %}, {% endif %}{% else %}no difference of 20 points{% endfor %}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endblock %}

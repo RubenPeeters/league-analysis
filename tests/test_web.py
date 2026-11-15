@@ -16,6 +16,8 @@ ENV = {
     "DISCORD_ROLE_ID": "role-1",
     "SESSION_SECRET": "session-secret",
     "PUBLIC_URL": "https://scout.example/",
+    "RIOT_API_KEY": "RGAPI-secret-key",
+    "MONGODB_URI": "mongodb://unused",
 }
 USER = {"id": "42", "username": "ruben", "global_name": "Ruben"}
 
@@ -36,9 +38,12 @@ def discord(member_status=200, roles=("role-1",), calls=None):
     return httpx.MockTransport(handler)
 
 
-def client(transport=None):
+def client(transport=None, jobs=None, env=ENV, run=None):
     # https, so the Secure cookies are sent back
-    app = web.create_app(ENV, transport=transport or discord())
+    from test_lookup import FakeJobs
+
+    jobs = jobs if jobs is not None else FakeJobs()
+    app = web.create_app(env, transport=transport or discord(), jobs=jobs, run=run)
     return TestClient(app, base_url="https://testserver", follow_redirects=False)
 
 
@@ -114,7 +119,7 @@ def test_expired_session_is_sent_to_login(monkeypatch):
 @pytest.mark.parametrize("key", web.CONFIG_KEYS)
 def test_missing_configuration_refuses_to_start(key):
     with pytest.raises(RuntimeError, match=key):
-        web.create_app({k: v for k, v in ENV.items() if k != key})
+        web.create_app({k: v for k, v in ENV.items() if k != key}, jobs=[])
 
 
 def test_healthz_and_style_need_no_login():

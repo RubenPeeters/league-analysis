@@ -5,14 +5,21 @@ Run with `uvicorn --factory web:create_app --app-dir src`.
 
 import os
 import secrets
+import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode
 
 import httpx
+from bson import ObjectId
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, URLSafeTimedSerializer
+from riotwatcher import LolWatcher, RiotWatcher
+
+import lookup
+from main import connect_db
 
 CONFIG_KEYS = (
     "DISCORD_CLIENT_ID",
@@ -21,6 +28,8 @@ CONFIG_KEYS = (
     "DISCORD_ROLE_ID",
     "SESSION_SECRET",
     "PUBLIC_URL",
+    "RIOT_API_KEY",
+    "MONGODB_URI",
 )
 DISCORD_AUTHORIZE = "https://discord.com/oauth2/authorize"
 DISCORD_API = "https://discord.com/api/v10"
@@ -44,15 +53,43 @@ def serializer(secret: str, salt: str) -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(secret, salt=salt)
 
 
-def create_app(env=None, transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
-    """transport replaces the network in tests."""
-    config = load_config(os.environ if env is None else env)
+def create_app(
+    env=None, transport: httpx.AsyncBaseTransport | None = None, jobs=None, run=None
+) -> FastAPI:
+    """transport, jobs (the lookup_jobs collection) and run (see lookup.run_job) replace the
+    network, MongoDB and the Riot API in tests."""
+    env = os.environ if env is None else env
+    config = load_config(env)
+    reuse_hours = float(env.get("LOOKUP_REUSE_HOURS") or 6)
+    per_day = int(env.get("LOOKUPS_PER_DAY") or 10)
+    if jobs is None:
+        matches_col, old_ids_col = connect_db(config["MONGODB_URI"])
+        jobs = matches_col.database["lookup_jobs"]
+        run = lookup.make_runner(
+            LolWatcher(config["RIOT_API_KEY"]),
+            RiotWatcher(config["RIOT_API_KEY"]),
+            matches_col,
+            old_ids_col,
+            int(env.get("KEEP_PREVIOUS_PATCHES") or 2),
+        )
     public_url = config["PUBLIC_URL"].rstrip("/")
     redirect_uri = f"{public_url}/auth/discord/callback"
     sessions = serializer(config["SESSION_SECRET"], "session")
     states = serializer(config["SESSION_SECRET"], "oauth-state")
     cookie_flags = {"httponly": True, "secure": True, "samesite": "lax"}
-    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        lookup.requeue_running(jobs)
+        stop = threading.Event()
+        worker = threading.Thread(
+            target=lookup.work, args=(jobs, run, stop), name="lookup-worker", daemon=True
+        )
+        worker.start()
+        yield
+        stop.set()
+
+    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 
     def current_user(request: Request) -> dict | None:
         try:
@@ -76,7 +113,51 @@ def create_app(env=None, transport: httpx.AsyncBaseTransport | None = None) -> F
         user = current_user(request)
         if user is None:
             return RedirectResponse("/login", status_code=303)
-        return page(request, "home.html", user=user)
+        return home_page(request, user)
+
+    def home_page(request: Request, user: dict, status: int = 200, **context):
+        return page(
+            request,
+            "home.html",
+            status,
+            user=user,
+            regions=lookup.REGION_NAMES,
+            recent=lookup.recent_lookups(jobs, user["id"]),
+            per_day=per_day,
+            **context,
+        )
+
+    @app.post("/lookup")
+    async def create_lookup(request: Request):
+        user = current_user(request)
+        if user is None:
+            return RedirectResponse("/login", status_code=303)
+        # parsed by hand: FastAPI's Form() needs python-multipart for a two-field form
+        body = parse_qs((await request.body()).decode(errors="replace"))
+        riot_id, region = (body.get(k, [""])[0] for k in ("riot_id", "region"))
+        form = {"riot_id": riot_id, "region": region}
+        if region not in lookup.REGION_NAMES:
+            return home_page(request, user, 400, error="Choose KR or EUW.", form=form)
+        try:
+            parsed = lookup.parse_riot_id(riot_id)
+        except ValueError as e:
+            return home_page(request, user, 400, error=str(e), form=form)
+        try:
+            job_id = lookup.request_lookup(jobs, parsed, region, user["id"], reuse_hours, per_day)
+        except lookup.DailyLimitError:
+            error = f"You have started {per_day} lookups in the last 24 hours, the most allowed."
+            return home_page(request, user, 429, error=error, form=form)
+        return RedirectResponse(f"/jobs/{job_id}", status_code=303)
+
+    @app.get("/jobs/{job_id}")
+    def job_page(request: Request, job_id: str):
+        user = current_user(request)
+        if user is None:
+            return RedirectResponse("/login", status_code=303)
+        job = jobs.find_one({"_id": ObjectId(job_id)}) if ObjectId.is_valid(job_id) else None
+        if job is None:
+            return page(request, "error.html", 404, message="There is no such lookup.")
+        return page(request, "job.html", job=job, regions=lookup.REGION_NAMES)
 
     @app.get("/login")
     def login(request: Request):
