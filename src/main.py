@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 import time
 from collections import Counter
 from datetime import datetime, timezone
@@ -8,6 +9,7 @@ from datetime import datetime, timezone
 import requests
 from dotenv import load_dotenv
 from pymongo import MongoClient
+from pymongo.errors import DuplicateKeyError
 from riotwatcher import ApiError, LolWatcher, RiotWatcher
 
 logger = logging.getLogger(__name__)
@@ -147,6 +149,10 @@ def load_static_data():
 
 
 # --- 4. HELPER FUNCTIONS ---
+class RiotAuthError(Exception):
+    """The Riot API rejected the key (401/403); no later call can succeed."""
+
+
 def smart_request(func, *args, **kwargs):
     while True:
         try:
@@ -157,6 +163,8 @@ def smart_request(func, *args, **kwargs):
                 continue
             elif e.response.status_code == 404:
                 return None
+            elif e.response.status_code in (401, 403):
+                raise RiotAuthError(f"Riot API rejected the key: {e}") from e
             else:
                 raise
         except Exception as e:
@@ -279,8 +287,12 @@ def purge_old_patches(matches_col, target_patch):
 
 # --- 6. CRAWLER ---
 def crawl(watcher, riot_watcher, matches_col, target_patch, player_count):
-    """Download new ranked matches of the top players into matches_col; return how many."""
+    """Download new ranked matches of the top players into matches_col.
+
+    Return (new matches saved, regions whose scan did not fail). RiotAuthError propagates.
+    """
     new_count = 0
+    regions_ok = 0
 
     for region_code, region_name in REGIONS:
         logger.info(f"=== Scan: {region_name} ({region_code}) ===")
@@ -353,6 +365,8 @@ def crawl(watcher, riot_watcher, matches_col, target_patch, player_count):
                             if account and "puuid" in account:  # type: ignore
                                 fallback_puuids.append(account["puuid"])  # type: ignore
                                 logger.info(f"  Found: {riot_id}")
+                        except RiotAuthError:
+                            raise
                         except Exception as e:  # noqa: BLE001 - skip this pro, try the next
                             logger.warning(f"  Could not find {riot_id}: {e}")
                             continue
@@ -420,16 +434,23 @@ def crawl(watcher, riot_watcher, matches_col, target_patch, player_count):
                                 matches_col.insert_one(slimmed)
                                 new_count += 1
                                 logger.info(f"  [+] Saved: {match_id}")
-                            except Exception:  # noqa: BLE001, S110
-                                pass  # mostly duplicate keys from the unique matchId index
+                            except DuplicateKeyError:
+                                pass  # already saved, e.g. by another player's history
+                            except Exception as e:  # noqa: BLE001 - skip this match, keep crawling
+                                logger.error(f"  Could not save {match_id}: {e}")
 
                     logger.info(f"Player {i + 1}/{player_count} scanned.")
+                except RiotAuthError:
+                    raise
                 except Exception as e:  # noqa: BLE001 - one bad player must not stop the crawl
                     logger.error(f"Player error: {e}")
+            regions_ok += 1
+        except RiotAuthError:
+            raise
         except Exception as e:  # noqa: BLE001 - one bad region must not stop the crawl
             logger.error(f"Region error: {e}")
 
-    return new_count
+    return new_count, regions_ok
 
 
 # --- 7. ANALYSIS (pure: stored matches in, data.json structure out) ---
@@ -726,9 +747,21 @@ def main():
     latest_ver, tank_champs, valid_items = load_static_data()
 
     target_patch = get_short_version(latest_ver) if latest_ver else None
-    purge_old_patches(matches_col, target_patch)
 
-    new_count = crawl(watcher, riot_watcher, matches_col, target_patch, player_count)
+    # On failure return before the purge and before writing data.json, so the workflow stops
+    # and the published site keeps its last good data.
+    try:
+        new_count, regions_ok = crawl(
+            watcher, riot_watcher, matches_col, target_patch, player_count
+        )
+    except RiotAuthError as e:
+        logger.error(f"{e}. Check the RIOT_API_KEY secret; data.json not written.")
+        return 1
+    if regions_ok == 0:
+        logger.error("Could not read the ladder for any region; data.json not written.")
+        return 1
+
+    purge_old_patches(matches_col, target_patch)
 
     logger.info("Generating Frontend JSON...")
     frontend_data = build_frontend_data(
@@ -743,7 +776,8 @@ def main():
     with open(OUTPUT_FILE, "w") as f:
         json.dump(frontend_data, f)
     logger.info(f"Complete. New Matches: {new_count}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
