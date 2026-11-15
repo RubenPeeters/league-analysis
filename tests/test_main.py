@@ -27,7 +27,20 @@ LEGENDARY = {3001, 3002, 3003, 3004}
 
 
 def player(
-    champ_id, champ, team, role, win=True, k=0, d=1, a=0, items=(), name=None, dmg=(0, 0, 0)
+    champ_id,
+    champ,
+    team,
+    role,
+    win=True,
+    k=0,
+    d=1,
+    a=0,
+    items=(),
+    name=None,
+    dmg=(0, 0, 0),
+    perks=None,
+    spells=(None, None),
+    remake=None,
 ):
     """A participant in the shape slim_match produces."""
     p = {
@@ -46,6 +59,10 @@ def player(
         "physicalDamageDealtToChampions": dmg[0],
         "magicDamageDealtToChampions": dmg[1],
         "trueDamageDealtToChampions": dmg[2],
+        "perks": perks,
+        "summoner1Id": spells[0],
+        "summoner2Id": spells[1],
+        "gameEndedInEarlySurrender": remake,
     }
     padded = list(items) + [0] * (6 - len(items))
     p.update({f"item{i}": padded[i] for i in range(6)})
@@ -400,6 +417,89 @@ def test_no_item_data_means_no_item_filtering():
     assert [i["id"] for i in garen["items"]] == [1001, 1002]
 
 
+def test_remakes_count_for_pick_rate_but_not_for_items():
+    matches = [
+        match([player(1, "Garen", 100, "TOP", items=[3001])]),
+        match([player(1, "Garen", 100, "TOP", items=[], remake=True)]),
+    ]
+    garen = build(matches, valid_items=LEGENDARY)["regions"]["euw1"]["TOP"][0]
+    assert (garen["count"], garen["pick_rate"], garen["item_games"]) == (2, 50.0, 1)
+    assert garen["items"] == [{"id": 3001, "games": 1, "share": 100.0}]
+
+
+def page(keystone=8112, primary=8100, sub=8300, rest=(8139, 8138, 8135), sec=(8304, 8347)):
+    """A rune page in the shape slim_perks produces."""
+    return {
+        "primaryStyle": primary,
+        "primary": [keystone, *rest],
+        "subStyle": sub,
+        "secondary": list(sec),
+        "shards": [5005, 5008, 5011],
+    }
+
+
+def garen_runes(*players):
+    matches = [match([p]) for p in players]
+    return build(matches)["regions"]["euw1"]["TOP"][0]
+
+
+def test_rune_pages_by_frequency_with_selection_of_the_top_page():
+    other_rest = page(rest=(8126, 8138, 8135))
+    garen = garen_runes(
+        player(1, "Garen", 100, "TOP", perks=page(), win=True),
+        player(1, "Garen", 100, "TOP", perks=page(), win=False),
+        player(1, "Garen", 100, "TOP", perks=other_rest, win=True),
+        player(1, "Garen", 100, "TOP", perks=page(sub=8000)),
+        player(1, "Garen", 100, "TOP", perks=page(keystone=8128)),
+        player(1, "Garen", 100, "TOP", perks=page(primary=8200, keystone=8214)),
+    )
+    assert garen["rune_games"] == 6
+    assert [(r["keystone"], r["games"], r["share"], r["win_rate"]) for r in garen["runes"]] == [
+        (8112, 3, 50.0, 66.7),
+        (8112, 1, 16.7, 100.0),
+        (8128, 1, 16.7, 100.0),
+    ]
+    assert garen["runes"][0]["secondary_style"] == 8300
+    assert garen["runes"][0]["selection"] == {
+        "primary": [8139, 8138, 8135],
+        "secondary": [8304, 8347],
+        "shards": [5005, 5008, 5011],
+        "games": 2,
+    }
+    assert "selection" not in garen["runes"][1]
+
+
+def test_spell_pair_order_is_ignored_and_capped_at_two():
+    garen = garen_runes(
+        player(1, "Garen", 100, "TOP", perks=page(), spells=(4, 14)),
+        player(1, "Garen", 100, "TOP", perks=page(), spells=(14, 4)),
+        player(1, "Garen", 100, "TOP", perks=page(), spells=(4, 12)),
+        player(1, "Garen", 100, "TOP", perks=page(), spells=(6, 12)),
+    )
+    assert garen["spells"] == [
+        {"ids": [4, 14], "games": 2, "share": 50.0},
+        {"ids": [4, 12], "games": 1, "share": 25.0},
+    ]
+
+
+def test_rune_and_spell_shares_are_over_games_with_rune_data_without_remakes():
+    garen = garen_runes(
+        player(1, "Garen", 100, "TOP", perks=page(), spells=(4, 14)),
+        player(1, "Garen", 100, "TOP", perks=page(keystone=8128), spells=(4, 12)),
+        # stored before runes were kept: no rune data, still a game
+        player(1, "Garen", 100, "TOP"),
+        player(1, "Garen", 100, "TOP", perks=page(keystone=8128), spells=(4, 12), remake=True),
+    )
+    assert (garen["count"], garen["item_games"], garen["rune_games"]) == (4, 3, 2)
+    assert [(r["keystone"], r["share"]) for r in garen["runes"]] == [(8112, 50.0), (8128, 50.0)]
+    assert [s["share"] for s in garen["spells"]] == [50.0, 50.0]
+
+
+def test_champion_without_rune_data_has_empty_runes_and_spells():
+    garen = garen_runes(player(1, "Garen", 100, "TOP"), player(1, "Garen", 100, "TOP"))
+    assert (garen["rune_games"], garen["runes"], garen["spells"]) == (0, [], [])
+
+
 def garen_game(items, enemy):
     """Garen top against one enemy champion; Darius has a physical share of 1, Lux of 0."""
     return match([player(1, "Garen", 100, "TOP", items=items), player(2, enemy, 200, "MIDDLE")])
@@ -468,7 +568,12 @@ def test_aggregate_returns_all_by_pick_rate_and_data_json_keeps_top_15():
     summaries = []
     for n in range(20):
         p = {"role": "TOP", "name": "x", "champ": f"C{n}", "win": True, "k": 0, "d": 0, "a": 0}
-        summaries += [{"bans": [], "participants": [{**p, "items": [], "context": []}]}] * (n + 1)
+        summaries += [
+            {
+                "bans": [],
+                "participants": [{**p, "items": [], "context": [], "remake": False, "perks": None}],
+            }
+        ] * (n + 1)
     result = aggregate(summaries, "TOP", "euw1", {}, None, {})
     assert [c["name"] for c in result] == [f"C{n}" for n in range(19, -1, -1)]
 

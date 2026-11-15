@@ -2,6 +2,13 @@ let globalData = {};
 let currentRole = 'JUNGLE';
 let DDRAGON_VER = "14.23.1"; // Will be updated from data.json 
 let itemNames = {}; // id -> name, from Data Dragon item.json
+let runeInfo = {}; // rune or rune style id -> {name, icon}, from Data Dragon runesReforged.json
+let spellInfo = {}; // summoner spell id -> {name, image}, from Data Dragon summoner.json
+// shortcut: stat shards are not in runesReforged.json, so their names are fixed here; update if Riot changes the shards.
+const SHARD_NAMES = {
+    5001: "Health Scaling", 5005: "Attack Speed", 5007: "Ability Haste", 5008: "Adaptive Force",
+    5010: "Move Speed", 5011: "Health", 5013: "Tenacity and Slow Resist",
+};
 
 // --- URL GENERATOR ---
 function getOpGgUrl(region, riotId) {
@@ -43,8 +50,10 @@ function openDetailView(champData) {
     document.getElementById('detail-img').src = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/champion/${champName}.png`;
 
     // 3. Populate Items and Boots
-    renderItemShares(document.getElementById('detail-items'), champData.items, champData.count);
-    renderItemShares(document.getElementById('detail-boots'), champData.boots, champData.count);
+    renderItemShares(document.getElementById('detail-items'), champData.items, champData.item_games);
+    renderItemShares(document.getElementById('detail-boots'), champData.boots, champData.item_games);
+    renderRunes(document.getElementById('detail-runes'), champData);
+    renderSpells(document.getElementById('detail-spells'), champData);
 
     renderMatchups(document.getElementById('context-builds'), champData.matchups);
 
@@ -155,6 +164,94 @@ function renderMatchups(container, matchups) {
     }
 }
 
+function iconRow(icons, text) {
+    const row = document.createElement('div');
+    row.className = 'matchup-item';
+    icons.forEach(({ src, name }) => {
+        const img = document.createElement('img');
+        img.src = src;
+        img.className = 'small-item-icon';
+        img.alt = name;
+        img.title = name;
+        row.appendChild(img);
+    });
+    const span = document.createElement('span');
+    span.textContent = text;
+    row.appendChild(span);
+    return row;
+}
+
+function noData(container, text) {
+    container.innerHTML = `<span style="color:#666; font-size:0.8rem;">${text}</span>`;
+}
+
+function rune(id) {
+    const r = runeInfo[id];
+    return r
+        ? { name: r.name, src: `https://ddragon.leagueoflegends.com/cdn/img/${r.icon}` }
+        : { name: `Rune ${id}`, src: '' };
+}
+
+function renderRunes(container, champ) {
+    container.innerHTML = '';
+    if (!champ.rune_games || !champ.runes || champ.runes.length === 0) {
+        noData(container, 'No rune data for this champion yet.');
+        return;
+    }
+    champ.runes.forEach(page => {
+        const icons = [rune(page.keystone), rune(page.primary_style), rune(page.secondary_style)];
+        container.appendChild(iconRow(icons,
+            `${icons[0].name}, ${icons[1].name} + ${icons[2].name}: ${page.share}% ` +
+            `(${page.games} of ${champ.rune_games} games), ${page.win_rate}% win rate`));
+    });
+    const sel = champ.runes[0].selection;
+    if (sel) {
+        const shards = sel.shards.map(id => SHARD_NAMES[id] || `Shard ${id}`).join(', ');
+        container.appendChild(iconRow([...sel.primary, ...sel.secondary].map(rune),
+            `Most common full page of the first: ${sel.games} of ${champ.runes[0].games} games. ` +
+            `Shards: ${shards}`));
+    }
+}
+
+function renderSpells(container, champ) {
+    container.innerHTML = '';
+    if (!champ.spells || champ.spells.length === 0) {
+        noData(container, 'No summoner spell data for this champion yet.');
+        return;
+    }
+    champ.spells.forEach(pair => {
+        const icons = pair.ids.map(id => {
+            const s = spellInfo[id];
+            return s
+                ? { name: s.name, src: `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/spell/${s.image}` }
+                : { name: `Spell ${id}`, src: '' };
+        });
+        container.appendChild(iconRow(icons,
+            `${icons.map(i => i.name).join(' + ')}: ${pair.share}% ` +
+            `(${pair.games} of ${champ.rune_games} games)`));
+    });
+}
+
+function loadRunesAndSpells() {
+    fetch(`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/data/en_US/runesReforged.json`)
+        .then(res => res.json())
+        .then(styles => {
+            for (const style of styles) {
+                runeInfo[style.id] = { name: style.name, icon: style.icon };
+                for (const slot of style.slots) {
+                    for (const r of slot.runes) runeInfo[r.id] = { name: r.name, icon: r.icon };
+                }
+            }
+        })
+        .catch(err => console.error("Runes:", err));
+    fetch(`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/data/en_US/summoner.json`)
+        .then(res => res.json())
+        .then(json => {
+            for (const d of Object.values(json.data)) spellInfo[d.key] = { name: d.name, image: d.image.full };
+        })
+        .catch(err => console.error("Summoner spells:", err));
+}
+
 function loadItemNames() {
     fetch(`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/data/en_US/item.json`)
         .then(res => res.json())
@@ -247,6 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateMetaInfo();
             refreshTables();
             loadItemNames();
+            loadRunesAndSpells();
         })
         .catch(err => console.error("Error:", err));
 });
