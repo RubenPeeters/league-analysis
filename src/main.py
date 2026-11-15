@@ -217,6 +217,23 @@ def extract_bans(match_info):
     ]
 
 
+def slim_perks(perks):
+    """The rune page of a participant's perks, or None when the response has no perks."""
+    if not perks:
+        return None
+    styles = {s.get("description"): s for s in perks.get("styles", [])}
+    primary = styles.get("primaryStyle", {})
+    sub = styles.get("subStyle", {})
+    shards = perks.get("statPerks", {})
+    return {
+        "primaryStyle": primary.get("style"),
+        "primary": [s.get("perk") for s in primary.get("selections", [])],
+        "subStyle": sub.get("style"),
+        "secondary": [s.get("perk") for s in sub.get("selections", [])],
+        "shards": [shards.get("offense"), shards.get("flex"), shards.get("defense")],
+    }
+
+
 def slim_match(match_detail, region_code):
     """Extract only the fields needed for analysis to reduce storage."""
     info = match_detail.get("info", {})
@@ -246,6 +263,10 @@ def slim_match(match_detail, region_code):
                 "physicalDamageDealtToChampions": p.get("physicalDamageDealtToChampions", 0),
                 "magicDamageDealtToChampions": p.get("magicDamageDealtToChampions", 0),
                 "trueDamageDealtToChampions": p.get("trueDamageDealtToChampions", 0),
+                "perks": slim_perks(p.get("perks")),
+                "summoner1Id": p.get("summoner1Id"),
+                "summoner2Id": p.get("summoner2Id"),
+                "gameEndedInEarlySurrender": p.get("gameEndedInEarlySurrender"),
             }
         )
 
@@ -266,6 +287,8 @@ def slim_match(match_detail, region_code):
         "info": {
             "gameVersion": info.get("gameVersion"),
             "gameCreation": info.get("gameCreation"),
+            # Always written, also as None: its presence marks a match slimmed with these fields.
+            "gameDuration": info.get("gameDuration"),
             "teams": slim_teams,
             "participants": slim_participants,
         },
@@ -533,6 +556,43 @@ def crawl(watcher, riot_watcher, matches_col, target_patch, player_count):
             logger.error(f"Region error: {e}")
 
     return new_count, regions_ok
+
+
+def incomplete_matches(docs, target_patch):
+    """(region, matchId) of stored current-patch matches slimmed before gameDuration was kept."""
+    return [
+        (d["_region"], d["metadata"]["matchId"])
+        for d in docs
+        if "gameDuration" not in d.get("info", {})
+        and get_short_version(d.get("info", {}).get("gameVersion")) == target_patch
+    ]
+
+
+def refetch_incomplete(watcher, matches_col, target_patch):
+    """Download incomplete stored matches again and replace them; return the number replaced.
+
+    Each match is tried once; one that cannot be fetched stays as it is. RiotAuthError propagates.
+    """
+    docs = matches_col.find(
+        {"info.gameDuration": {"$exists": False}},
+        {"_region": 1, "metadata.matchId": 1, "info.gameVersion": 1},
+    )
+    replaced = 0
+    for region_code, match_id in incomplete_matches(docs, target_patch):
+        try:
+            match_detail = smart_request(watcher.match.by_id, region_code, match_id)
+            if not match_detail:
+                continue
+            matches_col.replace_one(
+                {"metadata.matchId": match_id}, slim_match(match_detail, region_code)
+            )
+            replaced += 1
+        except RiotAuthError:
+            raise
+        except Exception as e:  # noqa: BLE001 - keep the old document, try the next match
+            logger.error(f"  Could not download {match_id} again: {e}")
+    logger.info(f"Downloaded {replaced} stored matches again with runes and game length.")
+    return replaced
 
 
 # --- 7. ANALYSIS (pure: stored matches in, data.json structure out) ---
@@ -907,6 +967,8 @@ def main():
         new_count, regions_ok = crawl(
             watcher, riot_watcher, matches_col, target_patch, player_count
         )
+        if target_patch and regions_ok:
+            refetch_incomplete(watcher, matches_col, target_patch)
     except RiotAuthError as e:
         logger.error(f"{e}. Check the RIOT_API_KEY secret; data.json not written.")
         return 1
