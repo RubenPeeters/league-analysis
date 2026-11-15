@@ -434,14 +434,15 @@ def analyze_enemy_comp(match_info, my_team_id, tank_champs, damage_shares):
     return tags
 
 
-def matchup_cards(s):
-    """Per enemy type: the items (boots included) whose share against that type differs by at
-    least MATCHUP_MIN_DIFF points from their share in the champion's other games."""
+def matchup_cards(s, min_games=MATCHUP_MIN_GAMES):
+    """Per enemy type (or other context): the items (boots included) whose share in its games
+    differs by at least MATCHUP_MIN_DIFF points from their share in the champion's other games;
+    min_games games on both sides."""
     all_items = s["items"] + s["boots"]
     cards = {}
     for tag, ctx in s["context_data"].items():
         games, other = ctx["g"], s["ig"] - ctx["g"]
-        if games < MATCHUP_MIN_GAMES or other < MATCHUP_MIN_GAMES:
+        if games < min_games or other < min_games:
             continue
         rows = []
         for i, total in all_items.items():
@@ -1058,6 +1059,7 @@ def aggregate(
     valid_items,
     player_performance,
     boots=frozenset(),
+    matchup_min_games=MATCHUP_MIN_GAMES,
 ):
     """Stats of every champion picked or banned in one role, by pick rate; adds each player's
     games to player_performance."""
@@ -1194,7 +1196,7 @@ def aggregate(
                     "item_games": s["ig"],
                     "items": item_shares(s["items"], s["ig"]),
                     "boots": item_shares(s["boots"], s["ig"]),
-                    "matchups": matchup_cards(s),
+                    "matchups": matchup_cards(s, matchup_min_games),
                     **rune_stats(s),
                     **order_stats(s),
                 }
