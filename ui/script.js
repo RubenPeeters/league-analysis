@@ -1,6 +1,7 @@
 let globalData = {};
 let currentRole = 'JUNGLE';
 let DDRAGON_VER = "14.23.1"; // Will be updated from data.json 
+let itemNames = {}; // id -> name, from Data Dragon item.json
 
 // --- URL GENERATOR ---
 function getOpGgUrl(region, riotId) {
@@ -41,62 +42,11 @@ function openDetailView(champData) {
     document.getElementById('detail-name').innerText = champName;
     document.getElementById('detail-img').src = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/champion/${champName}.png`;
 
-    // 3. Populate Core Items
-    const itemContainer = document.getElementById('detail-items');
-    itemContainer.innerHTML = '';
-    
-    if (champData.top_items && champData.top_items.length > 0) {
-        champData.top_items.forEach(itemId => {
-            const img = document.createElement('img');
-            img.src = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/item/${itemId}.png`;
-            img.className = 'item-icon';
-            img.title = `Item ID: ${itemId}`;
-            itemContainer.appendChild(img);
-        });
-    } else {
-        itemContainer.innerHTML = '<span style="color:#666; font-size:0.8rem;">No build data</span>';
-    }
+    // 3. Populate Items and Boots
+    renderItemShares(document.getElementById('detail-items'), champData.items, champData.count);
+    renderItemShares(document.getElementById('detail-boots'), champData.boots, champData.count);
 
-    // --- NEW: POPULATE CONTEXT BUILDS ---
-    const contextContainer = document.getElementById('context-builds');
-    contextContainer.innerHTML = ''; // Clear previous
-
-    if (champData.context_builds && Object.keys(champData.context_builds).length > 0) {
-        // Define color classes for specific tags
-        const tagMap = {
-            "Heavy AD": "ctx-ad",
-            "Heavy AP": "ctx-ap",
-            "Tank Heavy": "ctx-tank"
-        };
-
-        for (const [tag, data] of Object.entries(champData.context_builds)) {
-            // Only show if we have items
-            if (!data.items || data.items.length === 0) continue;
-
-            const colorClass = tagMap[tag] || "ctx-default";
-            
-            // Create Card HTML
-            const card = document.createElement('div');
-            card.className = `context-card ${colorClass}`;
-            
-            // Build Item Images HTML
-            const itemsHtml = data.items.map(id => 
-                `<img src="https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/item/${id}.png" class="small-item-icon" title="${tag} Build">`
-            ).join('');
-
-            card.innerHTML = `
-                <span class="context-label">
-                    VS ${tag}
-                    <span class="context-games">${data.games} Games</span>
-                </span>
-                <div class="small-item-row">
-                    ${itemsHtml}
-                </div>
-            `;
-            contextContainer.appendChild(card);
-        }
-    }
-    // -------------------------------------
+    renderMatchups(document.getElementById('context-builds'), champData.matchups);
 
     // 4. Populate Player Table (now filtered by role)
     const tbody = document.querySelector('#table-players tbody');
@@ -133,6 +83,85 @@ function openDetailView(champData) {
         `;
         tbody.insertAdjacentHTML('beforeend', html);
     });
+}
+
+// Each item shows its share; the game count shows on hover, or on tap via focus.
+function renderItemShares(container, items, count) {
+    container.innerHTML = '';
+    if (!items || items.length === 0) {
+        container.innerHTML = '<span style="color:#666; font-size:0.8rem;">No item data</span>';
+        return;
+    }
+    items.forEach(item => {
+        const name = itemNames[item.id] || `Item ${item.id}`;
+        const cell = document.createElement('figure');
+        cell.className = 'item-cell';
+        cell.tabIndex = 0;
+        cell.title = `${name}: in ${item.games} of ${count} games`;
+
+        const img = document.createElement('img');
+        img.src = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/item/${item.id}.png`;
+        img.className = 'item-icon';
+        img.alt = name;
+
+        const caption = document.createElement('figcaption');
+        caption.textContent = `${item.share}%`;
+        const games = document.createElement('span');
+        games.className = 'item-games';
+        games.textContent = `${item.games}/${count}`;
+        caption.appendChild(games);
+
+        cell.append(img, caption);
+        container.appendChild(cell);
+    });
+}
+
+// A card lists only the items picked noticeably more or less often against that enemy type.
+function renderMatchups(container, matchups) {
+    container.innerHTML = '';
+    const tagMap = { "Heavy AD": "ctx-ad", "Heavy AP": "ctx-ap", "Tank Heavy": "ctx-tank" };
+    for (const [tag, card] of Object.entries(matchups || {})) {
+        const el = document.createElement('div');
+        el.className = `context-card ${tagMap[tag] || "ctx-default"}`;
+
+        const label = document.createElement('span');
+        label.className = 'context-label';
+        label.textContent = `VS ${tag}`;
+        const games = document.createElement('span');
+        games.className = 'context-games';
+        games.textContent = `${card.games} vs ${card.other_games} other games`;
+        label.appendChild(games);
+        el.appendChild(label);
+
+        card.items.forEach(item => {
+            const name = itemNames[item.id] || `Item ${item.id}`;
+            const row = document.createElement('div');
+            row.className = 'matchup-item';
+            row.tabIndex = 0;
+            row.title = `${name}: in ${item.games} of ${card.games} games vs ${tag}, ` +
+                `${item.other_games} of ${card.other_games} other games`;
+
+            const img = document.createElement('img');
+            img.src = `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/item/${item.id}.png`;
+            img.className = 'small-item-icon';
+            img.alt = name;
+            const text = document.createElement('span');
+            text.textContent = `${item.share}% vs ${item.other_share}% in other games`;
+
+            row.append(img, text);
+            el.appendChild(row);
+        });
+        container.appendChild(el);
+    }
+}
+
+function loadItemNames() {
+    fetch(`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/data/en_US/item.json`)
+        .then(res => res.json())
+        .then(json => {
+            for (const [id, d] of Object.entries(json.data)) itemNames[id] = d.name;
+        })
+        .catch(err => console.error("Item names:", err));
 }
 
 function closeDetailView() {
@@ -217,6 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
             globalData = data;
             updateMetaInfo();
             refreshTables();
+            loadItemNames();
         })
         .catch(err => console.error("Error:", err));
 });

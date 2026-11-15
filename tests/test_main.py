@@ -12,8 +12,10 @@ from main import (
     aggregate,
     analyze_enemy_comp,
     build_frontend_data,
+    champion_damage_shares,
     extract_bans,
     get_short_version,
+    select_items,
     slim_match,
     update_history,
 )
@@ -63,8 +65,8 @@ def match(participants, bans=(), region="euw1", version="15.22.700.1"):
     }
 
 
-def build(matches, valid_items=None, tank_champs=frozenset()):
-    return build_frontend_data(matches, "15.22.1", 10, tank_champs, valid_items, "now")
+def build(matches, valid_items=None, tank_champs=frozenset(), boots=frozenset()):
+    return build_frontend_data(matches, "15.22.1", 10, tank_champs, valid_items, "now", boots)
 
 
 def by_name(rows):
@@ -118,30 +120,55 @@ def test_slim_match_keeps_only_analysis_fields():
     assert p["riotIdGameName"] is None
 
 
-def enemies(dmg_each, champs=("A", "B")):
+def champ_games(champ, dmg, n):
+    """n stored games of champ dealing dmg (physical, magic, true) to champions."""
+    return [match([player(1, champ, 100, "TOP", dmg=dmg)]) for _ in range(n)]
+
+
+def test_champion_damage_share_sums_damage_over_games():
+    games = champ_games("Ahri", (10, 80, 10), 3) + champ_games("Ahri", (40, 50, 10), 2)
+    games.append(match([player(1, "Ahri", 100, "MIDDLE", dmg=(0, 0, 0))], region="kr"))
+    phys, magic = champion_damage_shares(games)["Ahri"]
+    assert round(phys, 4) == round(110 / 500, 4)
+    assert round(magic, 4) == round(340 / 500, 4)
+
+
+def test_champion_with_fewer_than_five_games_has_no_share():
+    assert champion_damage_shares(champ_games("Ahri", (0, 100, 0), 4)) == {}
+    assert "Ahri" in champion_damage_shares(champ_games("Ahri", (0, 100, 0), 5))
+
+
+def enemies(champs):
     return {
-        "participants": [player(1, "Me", 100, "TOP", dmg=(999, 999, 999))]
-        + [player(i, c, 200, "TOP", dmg=dmg_each) for i, c in enumerate(champs)]
+        "participants": [player(1, "Me", 100, "TOP")]
+        + [player(i, c, 200, "TOP") for i, c in enumerate(champs)]
     }
 
 
-def test_analyze_enemy_comp_heavy_ad():
-    assert analyze_enemy_comp(enemies((70, 20, 10)), 100, set()) == ["Heavy AD"]
+SHARES = {"Darius": (0.9, 0.05), "Jinx": (0.7, 0.1), "Lux": (0.1, 0.85), "Ahri": (0.2, 0.7)}
 
 
-def test_analyze_enemy_comp_heavy_ap():
-    assert analyze_enemy_comp(enemies((20, 70, 10)), 100, set()) == ["Heavy AP"]
+def test_team_type_is_the_mean_over_known_champions():
+    assert analyze_enemy_comp(enemies(["Darius", "Jinx"]), 100, set(), SHARES) == ["Heavy AD"]
+    assert analyze_enemy_comp(enemies(["Lux", "Ahri"]), 100, set(), SHARES) == ["Heavy AP"]
+    # mean physical (0.9 + 0.1) / 2 = 0.5, mean magic 0.45: neither
+    assert analyze_enemy_comp(enemies(["Darius", "Lux"]), 100, set(), SHARES) == []
+    # a champion without a share is left out of the mean, not counted as 0
+    assert analyze_enemy_comp(enemies(["Darius", "Zoe"]), 100, set(), SHARES) == ["Heavy AD"]
+    assert analyze_enemy_comp(enemies(["Zoe"]), 100, set(), SHARES) == []
 
 
-def test_analyze_enemy_comp_tank_heavy():
-    info = enemies((50, 50, 0), champs=("Malphite", "Ornn", "Lux"))
-    assert analyze_enemy_comp(info, 100, {"Malphite", "Ornn"}) == ["Tank Heavy"]
-    assert analyze_enemy_comp(info, 100, {"Malphite"}) == []
+def test_team_type_ignores_damage_dealt_in_the_game():
+    info = enemies(["Lux", "Ahri"])
+    for p in info["participants"][1:]:
+        p["physicalDamageDealtToChampions"] = 10_000
+    assert analyze_enemy_comp(info, 100, set(), SHARES) == ["Heavy AP"]
 
 
-def test_analyze_enemy_comp_zero_damage():
-    info = enemies((0, 0, 0), champs=("Ornn", "Sion"))
-    assert analyze_enemy_comp(info, 100, {"Ornn", "Sion"}) == []
+def test_team_type_tank_heavy():
+    info = enemies(["Malphite", "Ornn", "Lux"])
+    assert analyze_enemy_comp(info, 100, {"Malphite", "Ornn"}, {}) == ["Tank Heavy"]
+    assert analyze_enemy_comp(info, 100, {"Malphite"}, {}) == []
 
 
 def test_pick_ban_and_win_rate():
@@ -218,48 +245,96 @@ def test_banned_never_picked_champion_is_listed_with_zero_games():
     matches = [match([player(1, "Garen", 100, "TOP"), player(2, "Darius", 200, "JUNGLE")], [2])]
     darius = by_name(build(matches)["regions"]["euw1"]["TOP"])["Darius"]
     assert (darius["count"], darius["win_rate"], darius["ban_rate"]) == (0, 0, 100.0)
-    assert darius["top_items"] == []
+    assert (darius["items"], darius["boots"]) == ([], [])
 
 
-def test_top_build_signature_is_sorted_first_three_valid_items():
+def test_item_shares_are_over_all_games_with_boots_apart():
+    boots = {3020}
     matches = [
-        # the component 1001 is dropped; only the first 3 valid items count, sorted
-        match([player(1, "Garen", 100, "TOP", items=[3002, 1001, 3001, 3004, 3003])]),
-        match([player(1, "Garen", 100, "TOP", items=[3001, 3004, 3002])]),
-        match([player(1, "Garen", 100, "TOP", items=[3003, 3004])]),
-        # a single valid item is not a build
+        # the component 1001 is dropped; a duplicate item counts once
+        match([player(1, "Garen", 100, "TOP", items=[3002, 1001, 3001, 3020, 3001])]),
+        match([player(1, "Garen", 100, "TOP", items=[3001, 3020])]),
         match([player(1, "Garen", 100, "TOP", items=[3003])]),
+        # a game without finished items still counts in the denominator
+        match([player(1, "Garen", 100, "TOP", items=[1001])]),
     ]
+    garen = build(matches, valid_items=LEGENDARY | boots, boots=boots)["regions"]["euw1"]["TOP"][0]
+    assert garen["count"] == 4
+    assert garen["items"] == [
+        {"id": 3001, "games": 2, "share": 50.0},
+        {"id": 3002, "games": 1, "share": 25.0},
+        {"id": 3003, "games": 1, "share": 25.0},
+    ]
+    assert garen["boots"] == [{"id": 3020, "games": 2, "share": 50.0}]
+
+
+def test_items_are_capped_at_eight_by_share():
+    ids = list(range(4001, 4011))
+    matches = [
+        match([player(1, "Garen", 100, "TOP", items=ids[:6])]),
+        match([player(1, "Garen", 100, "TOP", items=ids[4:])]),
+    ]
+    garen = build(matches)["regions"]["euw1"]["TOP"][0]
+    assert [i["id"] for i in garen["items"]] == [4005, 4006, 4001, 4002, 4003, 4004, 4007, 4008]
+
+
+def test_champion_without_finished_items_has_empty_lists():
+    matches = [match([player(1, "Garen", 100, "TOP", items=[1001])])]
     garen = build(matches, valid_items=LEGENDARY)["regions"]["euw1"]["TOP"][0]
-    assert garen["top_items"] == [3001, 3002, 3004]
+    assert (garen["count"], garen["items"], garen["boots"]) == (1, [], [])
 
 
 def test_no_item_data_means_no_item_filtering():
     matches = [match([player(1, "Garen", 100, "TOP", items=[1001, 1002])])]
     garen = build(matches, valid_items=None)["regions"]["euw1"]["TOP"][0]
-    assert garen["top_items"] == [1001, 1002]
+    assert [i["id"] for i in garen["items"]] == [1001, 1002]
 
 
-def ad_game(items):
-    """Garen top against an enemy team doing only physical damage."""
-    return match(
-        [
-            player(1, "Garen", 100, "TOP", items=items),
-            player(2, "Darius", 200, "JUNGLE", dmg=(100, 0, 0)),
-        ]
+def garen_game(items, enemy):
+    """Garen top against one enemy champion; Darius has a physical share of 1, Lux of 0."""
+    return match([player(1, "Garen", 100, "TOP", items=items), player(2, enemy, 200, "MIDDLE")])
+
+
+def matchups(ad_games, other_games, boots=frozenset()):
+    """Garen's matchup cards; ad_games and other_games are item lists, one per game."""
+    damage = [
+        match([player(2, c, 200, "MIDDLE", dmg=d)])
+        for c, d in [("Darius", (1, 0, 0)), ("Lux", (0, 1, 0))]
+    ] * 5
+    matches = (
+        damage
+        + [garen_game(i, "Darius") for i in ad_games]
+        + [garen_game(i, "Lux") for i in other_games]
     )
+    data = build(matches, valid_items=LEGENDARY | boots, boots=boots)
+    return by_name(data["regions"]["euw1"]["TOP"])["Garen"]["matchups"]
 
 
-def test_context_build_below_three_games_is_left_out():
-    two = [ad_game([3001, 3002]), ad_game([3001, 3002])]
-    garen = by_name(build(two, valid_items=LEGENDARY)["regions"]["euw1"]["TOP"])["Garen"]
-    assert garen["context_builds"] == {}
+def test_matchup_card_lists_items_differing_by_twenty_points():
+    # vs Heavy AD: 3001 in 8/10 (80%), others 3/10 (30%); 3002 in 5/10 vs 3/10 (20 points,
+    # included); 3003 in 4/10 vs 3/10 (10 points, left out); boots 3020 in 0/10 vs 10/10.
+    ad = [[3001, 3002, 3003]] * 3 + [[3001, 3002, 3003]] + [[3001, 3002]] + [[3001]] * 3 + [[]] * 2
+    other = [[3001, 3002, 3003, 3020]] * 3 + [[3020]] * 7
+    card = matchups(ad, other, boots={3020})["Heavy AD"]
+    assert card == {
+        "games": 10,
+        "other_games": 10,
+        "items": [
+            {"id": 3020, "games": 0, "share": 0.0, "other_games": 10, "other_share": 100.0},
+            {"id": 3001, "games": 8, "share": 80.0, "other_games": 3, "other_share": 30.0},
+            {"id": 3002, "games": 5, "share": 50.0, "other_games": 3, "other_share": 30.0},
+        ],
+    }
 
 
-def test_context_build_at_three_games_is_included():
-    three = [ad_game([3001, 3002]), ad_game([3001, 3002]), ad_game([3003, 3004])]
-    garen = by_name(build(three, valid_items=LEGENDARY)["regions"]["euw1"]["TOP"])["Garen"]
-    assert garen["context_builds"] == {"Heavy AD": {"games": 3, "items": [3001, 3002]}}
+def test_matchup_card_needs_ten_games_on_both_sides():
+    assert "Heavy AD" in matchups([[3001]] * 10, [[]] * 10)
+    assert matchups([[3001]] * 9, [[]] * 10) == {}
+    assert matchups([[3001]] * 10, [[]] * 9) == {}
+
+
+def test_champion_with_no_card_when_no_item_differs():
+    assert matchups([[3001]] * 10, [[3001]] * 9 + [[]]) == {}
 
 
 def test_leaderboard_keys_are_role_and_champion():
@@ -367,7 +442,7 @@ def run_main(monkeypatch, tmp_path, watcher):
     monkeypatch.setattr(main, "LolWatcher", lambda key: watcher)
     monkeypatch.setattr(main, "RiotWatcher", lambda key: SimpleNamespace())
     monkeypatch.setattr(main, "connect_db", lambda uri: col)
-    monkeypatch.setattr(main, "load_static_data", lambda: ("15.22.1", set(), None))
+    monkeypatch.setattr(main, "load_static_data", lambda: ("15.22.1", set(), None, set()))
     return main.main(), col, tmp_path / "data.json"
 
 
@@ -404,6 +479,38 @@ def test_insert_error_other_than_duplicate_is_logged(monkeypatch, tmp_path, capl
     assert code == 0
     assert "Could not save euw1_1: disk full" in caplog.text
     assert "Could not save kr_1" not in caplog.text
+
+
+# --- Data Dragon item selection ---
+
+
+def item(cost, buy=True, rift=True, tags=(), frm=None, into=None, recipe=None):
+    """A Data Dragon item.json entry with only the fields select_items reads."""
+    d = {"gold": {"purchasable": buy, "total": cost}, "maps": {"11": rift}, "tags": list(tags)}
+    d.update({k: v for k, v in (("from", frm), ("into", into), ("specialRecipe", recipe)) if v})
+    return d
+
+
+ITEMS = {
+    "3031": item(3500, frm=["1038"]),  # Infinity Edge, depth 2
+    "1038": item(1300, into=["3031"]),  # B. F. Sword, a component
+    "2003": item(50, tags=["Consumable"]),  # Health Potion
+    "1054": item(450),  # Doran's Shield, starting item
+    "3009": item(3000, rift=False),  # finished, but not on Summoner's Rift
+    "1001": item(300, tags=["Boots"], into=["3020"]),  # tier 1 boots
+    "3020": item(1100, tags=["Boots"], frm=["1001"], into=["3175"]),  # tier 2 boots
+    "3004": item(2900),  # Manamune
+    "3042": item(2900, buy=False, recipe=3004),  # Muramana, transformed
+    "3866": item(400, buy=False, recipe=3865),  # Runic Compass, turns into Bounty of Worlds
+    "3867": item(400, buy=False, recipe=3866, into=["3869"]),  # Bounty of Worlds
+    "3869": item(400, frm=["3867"]),  # Celestial Opposition, support upgrade
+}
+
+
+def test_select_items_keeps_finished_and_transformed_items():
+    finished, boots = select_items(ITEMS)
+    assert finished == {3031, 3004, 3042, 3869}
+    assert boots == {3020}
 
 
 # --- history.json ---

@@ -433,7 +433,27 @@ tbody tr a { position: relative; z-index: 2; }
 
 .item-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
+    margin-bottom: 8px;
+}
+
+.item-cell {
+    margin: 0;
+    text-align: center;
+    cursor: default;
+}
+
+.item-cell figcaption {
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.item-games { display: none; }
+
+.item-cell:hover .item-games,
+.item-cell:focus .item-games {
+    display: block;
 }
 
 .item-icon {
@@ -452,7 +472,7 @@ tbody tr a { position: relative; z-index: 2; }
     z-index: 10;
 }
 
-/* NEW: CONTEXT BUILDS */
+/* MATCHUP CARDS */
 .context-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -492,9 +512,12 @@ tbody tr a { position: relative; z-index: 2; }
 .ctx-tank { color: #4caf50; border-left: 3px solid #4caf50; } /* Green for Tank */
 .ctx-default { color: #e0e0e0; border-left: 3px solid #e0e0e0; }
 
-.small-item-row {
+.matchup-item {
     display: flex;
-    gap: 6px;
+    align-items: center;
+    gap: 8px;
+    color: #e0e0e0;
+    font-size: 0.8rem;
 }
 
 .small-item-icon {
