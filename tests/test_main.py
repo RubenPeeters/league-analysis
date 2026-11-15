@@ -1,6 +1,7 @@
 """Unit tests for src/main.py on hand-written fixtures; no Riot API, no MongoDB."""
 
 import json
+import os
 from types import SimpleNamespace
 
 import requests
@@ -10,11 +11,14 @@ from riotwatcher import ApiError
 import main
 from main import (
     aggregate,
+    aggregate_regions,
     analyze_enemy_comp,
     build_frontend_data,
     extract_bans,
     get_short_version,
+    load_history,
     slim_match,
+    update_history,
 )
 
 LEGENDARY = {3001, 3002, 3003, 3004}
@@ -62,8 +66,11 @@ def match(participants, bans=(), region="euw1", version="15.22.700.1"):
     }
 
 
-def build(matches, valid_items=None, tank_champs=frozenset()):
-    return build_frontend_data(matches, "15.22.1", 10, tank_champs, valid_items, "now")
+def build(matches, valid_items=None, tank_champs=frozenset(), ddragon_version="15.22.1"):
+    regions, player_performance = aggregate_regions(matches, tank_champs, valid_items)
+    return build_frontend_data(
+        len(matches), ddragon_version, 10, regions, player_performance, "now"
+    )
 
 
 def by_name(rows):
@@ -278,18 +285,23 @@ def test_leaderboard_keys_are_role_and_champion():
     ]
 
 
-def test_aggregate_keeps_top_15_by_pick_rate():
+def test_aggregate_keeps_all_and_data_json_keeps_top_15_by_pick_rate():
     summaries = []
+    matches = []
     for n in range(20):
         p = {"role": "TOP", "name": "x", "champ": f"C{n}", "win": True, "k": 0, "d": 0, "a": 0}
         summaries += [{"bans": [], "participants": [{**p, "items": [], "context": []}]}] * (n + 1)
+        matches += [match([player(n, f"C{n}", 100, "TOP")])] * (n + 1)
     result = aggregate(summaries, "TOP", "euw1", {}, None, {})
-    assert [c["name"] for c in result] == [f"C{n}" for n in range(19, 4, -1)]
+    assert [c["name"] for c in result] == [f"C{n}" for n in range(19, -1, -1)]
+    top = build(matches)["regions"]["euw1"]["TOP"]
+    assert [c["name"] for c in top] == [f"C{n}" for n in range(19, 4, -1)]
 
 
 def test_meta_and_regions_shape():
     matches = [match([player(1, "Garen", 100, "TOP")]), match([], region="na1")]
-    data = build_frontend_data(matches, None, 7, set(), None, "2026-11-15 00:00 UTC")
+    regions, player_performance = aggregate_regions(matches, set(), None)
+    data = build_frontend_data(2, None, 7, regions, player_performance, "2026-11-15 00:00 UTC")
     assert data["meta"] == {
         "total_games": 2,
         "last_updated": "2026-11-15 00:00 UTC",
@@ -357,6 +369,7 @@ def run_main(monkeypatch, tmp_path, watcher):
     monkeypatch.setattr(main, "load_dotenv", lambda: None)
     monkeypatch.setattr(main, "DATA_FOLDER", str(tmp_path))
     monkeypatch.setattr(main, "OUTPUT_FILE", str(tmp_path / "data.json"))
+    monkeypatch.setattr(main, "HISTORY_FILE", str(tmp_path / "history.json"))
     monkeypatch.setattr(main, "LolWatcher", lambda key: watcher)
     monkeypatch.setattr(main, "RiotWatcher", lambda key: SimpleNamespace())
     monkeypatch.setattr(main, "connect_db", lambda uri: col)
@@ -397,3 +410,119 @@ def test_insert_error_other_than_duplicate_is_logged(monkeypatch, tmp_path, capl
     assert code == 0
     assert "Could not save euw1_1: disk full" in caplog.text
     assert "Could not save kr_1" not in caplog.text
+
+
+# --- per-patch archive (history.json) ---
+
+BACKFILL = {
+    "patch": "16.2",
+    "snapshot_date": "2026-02-03",
+    "source": "backfill",
+    "complete": False,
+    "commit": "e4e488c",
+    "regions": {
+        "kr": {
+            "games": 2242,
+            "games_estimated": True,
+            "roles": {
+                "TOP": [
+                    {
+                        "name": "Rumble",
+                        "games": 199,
+                        "pick_rate": 8.9,
+                        "win_rate": 60.0,
+                        "ban_rate": 27.2,
+                    }
+                ]
+            },
+        }
+    },
+}
+
+
+def regions_for(matches):
+    return aggregate_regions(matches, set(), None)[0]
+
+
+def two_games():
+    return [
+        match([player(1, "Garen", 100, "TOP"), player(2, "Darius", 200, "TOP", win=False)]),
+        match([player(1, "Garen", 100, "TOP", win=False)], bans=[2], region="kr"),
+    ]
+
+
+def test_new_patch_entry_has_every_picked_champion():
+    history = update_history({"schema": 1, "patches": []}, "16.21", regions_for(two_games()), "d")
+    [entry] = history["patches"]
+    assert entry["patch"] == "16.21"
+    assert entry["snapshot_date"] == "d"
+    assert entry["source"] == "generator"
+    assert entry["complete"] is True
+    assert "commit" not in entry
+    assert entry["regions"]["euw1"]["games"] == 1
+    assert entry["regions"]["euw1"]["games_estimated"] is False
+    assert entry["regions"]["euw1"]["roles"]["TOP"] == [
+        {"name": "Garen", "games": 1, "pick_rate": 50.0, "win_rate": 100.0, "ban_rate": 0.0},
+        {"name": "Darius", "games": 1, "pick_rate": 50.0, "win_rate": 0, "ban_rate": 0.0},
+    ]
+    assert list(entry["regions"]["euw1"]["roles"]["TOP"][0]) == list(
+        BACKFILL["regions"]["kr"]["roles"]["TOP"][0]
+    )
+    # Darius was banned in kr but not picked there: not in the archive.
+    assert [c["name"] for c in entry["regions"]["kr"]["roles"]["TOP"]] == ["Garen"]
+
+
+def test_archive_keeps_champions_beyond_top_15():
+    matches = [match([player(n, f"C{n}", 100, "TOP")]) for n in range(20)]
+    entry = update_history({"schema": 1, "patches": []}, "16.21", regions_for(matches), "d")
+    assert len(entry["patches"][0]["regions"]["euw1"]["roles"]["TOP"]) == 20
+
+
+def test_second_run_replaces_current_patch_entry():
+    first = update_history({"schema": 1, "patches": []}, "16.21", regions_for(two_games()), "a")
+    second = update_history(first, "16.21", regions_for(two_games()[:1]), "b")
+    [entry] = second["patches"]
+    assert entry["snapshot_date"] == "b"
+    assert entry["regions"]["kr"]["games"] == 0
+
+
+def test_backfill_entries_unchanged_and_patches_in_numeric_order(tmp_path):
+    path = tmp_path / "history.json"
+    later = {**BACKFILL, "patch": "16.10"}
+    path.write_text(json.dumps({"schema": 1, "patches": [BACKFILL, later]}))
+    before = [json.dumps(p) for p in load_history(str(path))["patches"]]
+
+    main.save_history(
+        str(path), update_history(load_history(str(path)), "16.9", regions_for(two_games()), "d")
+    )
+    patches = load_history(str(path))["patches"]
+    assert [p["patch"] for p in patches] == ["16.2", "16.9", "16.10"]
+    assert [json.dumps(patches[0]), json.dumps(patches[2])] == before
+
+
+def test_zero_matches_leaves_history_unchanged():
+    history = {"schema": 1, "patches": [BACKFILL]}
+    assert update_history(history, "16.2", regions_for([]), "d") is history
+
+
+def test_missing_history_file_starts_empty(tmp_path):
+    assert load_history(str(tmp_path / "none.json")) == {"schema": 1, "patches": []}
+
+
+def test_unusable_history_stops_run_before_writing(monkeypatch, tmp_path):
+    for content in ("{not json", '{"schema": 2, "patches": []}'):
+        (tmp_path / "history.json").write_text(content)
+        code, col, out = run_main(monkeypatch, tmp_path, fake_watcher())
+        assert code != 0
+        assert not out.exists()
+        assert col.docs == [] and col.deletes == []
+        assert (tmp_path / "history.json").read_text() == content
+
+
+def test_successful_run_writes_history(monkeypatch, tmp_path):
+    code, _, _ = run_main(monkeypatch, tmp_path, fake_watcher())
+    assert code == 0
+    history = json.loads((tmp_path / "history.json").read_text())
+    assert [p["patch"] for p in history["patches"]] == ["15.22"]
+    assert history["patches"][0]["regions"]["kr"]["games"] == 1
+    assert not os.path.exists(tmp_path / "history.json.tmp")

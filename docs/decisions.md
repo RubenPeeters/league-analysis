@@ -30,3 +30,8 @@ The adoption commit did not touch `src/main.py`; it is excluded from ruff in `py
 
 `aggregate()` counts both players of the role in every match, for champion statistics, builds, context builds and leaderboards. `pick_rate` is picks of the champion in the role divided by the number of role slots (2 per match), as a percentage. `ban_rate` is unchanged: bans divided by matches.
 **Why:** only the blue-side player of each role was counted, so half the picks were ignored (#10). Dividing by role slots instead of matches keeps a role's pick rates summing to about 100, the scale the site and the per-patch archive on the `data` branch already use.
+
+## 2026-11-15: per-patch archive in data/history.json
+
+`main()` keeps `data/history.json`: `update_history()` (pure) replaces or adds the current patch's entry with every picked champion per role, leaving other patches untouched; `load_history()` and `save_history()` do the I/O around it. The file is read before the crawl, and one that cannot be parsed or is not schema 1 makes the run exit 1 before anything is written. It is written compactly and through a temporary file plus rename. `aggregate()` now returns every champion; `build_frontend_data()` cuts to the top 15 so `data.json` is unchanged.
+**Why:** MongoDB is purged at every patch, so the generator is the only place a patch's full result exists (#11). The archive is the only copy, so a broken file or an interrupted write must never replace it with an empty or truncated one.

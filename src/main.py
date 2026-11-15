@@ -80,6 +80,7 @@ FALLBACK_PRO_PLAYERS = {
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(SCRIPT_DIR, "..", "data")
 OUTPUT_FILE = os.path.join(DATA_FOLDER, "data.json")
+HISTORY_FILE = os.path.join(DATA_FOLDER, "history.json")
 
 
 # --- 2. DATABASE ---
@@ -497,7 +498,8 @@ def summarize_match(m, champ_id_to_name, tank_champs):
 def aggregate(
     match_list, role_filter, region_code, champ_id_to_name, valid_items, player_performance
 ):
-    """Champion stats for one role; adds each player's games to player_performance."""
+    """Champion stats for one role, all of them sorted by pick rate; adds each player's games to
+    player_performance."""
     stats = {}
     total_matches = len(match_list)
     if total_matches == 0:
@@ -647,7 +649,7 @@ def aggregate(
                 }
             )
 
-    return sorted(results, key=lambda x: x["pick_rate"], reverse=True)[:15]
+    return sorted(results, key=lambda x: x["pick_rate"], reverse=True)
 
 
 def build_leaderboards(player_performance):
@@ -671,29 +673,13 @@ def build_leaderboards(player_performance):
     return leaderboards
 
 
-def build_frontend_data(
-    matches, ddragon_version, player_count, tank_champs, valid_items, last_updated
-):
-    """Turn all stored matches (any region) into the data.json structure."""
-    # Use the patch version we got from Data Dragon API, not from database
-    current_patch = get_short_version(ddragon_version) if ddragon_version else "14.1"
-
-    frontend_data = {
-        "meta": {
-            "total_games": len(matches),
-            "last_updated": last_updated,
-            "current_patch": current_patch,
-            "ddragon_version": ddragon_version or "14.23.1",
-            "player_count": player_count,
-        },
-        "regions": {},
-        "leaderboards": {},
-    }
-
+def aggregate_regions(matches, tank_champs, valid_items):
+    """Per region: match count and every champion per role; plus the leaderboard input."""
     # Both are shared across regions on purpose: a region's bans resolve against every champion
     # seen so far, and a player's leaderboard region is the first one they were seen in.
     champ_id_to_name = {}
     player_performance = {}
+    regions = {}
 
     for region_code, _ in REGIONS:
         region_matches = [
@@ -701,23 +687,110 @@ def build_frontend_data(
             for m in matches
             if m.get("_region") == region_code
         ]
-        frontend_data["regions"][region_code] = {
-            r: aggregate(
-                region_matches,
-                r,
-                region_code,
-                champ_id_to_name,
-                valid_items,
-                player_performance,
-            )
-            for r in VALID_ROLES
+        regions[region_code] = {
+            "games": len(region_matches),
+            "roles": {
+                r: aggregate(
+                    region_matches,
+                    r,
+                    region_code,
+                    champ_id_to_name,
+                    valid_items,
+                    player_performance,
+                )
+                for r in VALID_ROLES
+            },
         }
-
-    frontend_data["leaderboards"] = build_leaderboards(player_performance)
-    return frontend_data
+    return regions, player_performance
 
 
-# --- 8. ENTRY POINT ---
+def build_frontend_data(
+    total_games, ddragon_version, player_count, regions, player_performance, last_updated
+):
+    """Turn aggregate_regions() output into the data.json structure."""
+    # Use the patch version we got from Data Dragon API, not from database
+    current_patch = get_short_version(ddragon_version) if ddragon_version else "14.1"
+
+    return {
+        "meta": {
+            "total_games": total_games,
+            "last_updated": last_updated,
+            "current_patch": current_patch,
+            "ddragon_version": ddragon_version or "14.23.1",
+            "player_count": player_count,
+        },
+        "regions": {
+            rc: {r: rows[:15] for r, rows in region["roles"].items()}
+            for rc, region in regions.items()
+        },
+        "leaderboards": build_leaderboards(player_performance),
+    }
+
+
+# --- 8. PER-PATCH ARCHIVE (data/history.json) ---
+def patch_key(patch):
+    return tuple(int(x) for x in patch.split("."))
+
+
+def update_history(history, patch, regions, snapshot_date):
+    """Return history with the entry for patch replaced or added; other entries untouched."""
+    if sum(region["games"] for region in regions.values()) == 0:
+        return history
+    entry = {
+        "patch": patch,
+        "snapshot_date": snapshot_date,
+        "source": "generator",
+        "complete": True,
+        "regions": {
+            rc: {
+                "games": region["games"],
+                "games_estimated": False,
+                "roles": {
+                    r: [
+                        {
+                            "name": c["name"],
+                            "games": c["count"],
+                            "pick_rate": c["pick_rate"],
+                            "win_rate": c["win_rate"],
+                            "ban_rate": c["ban_rate"],
+                        }
+                        for c in rows
+                        if c["count"] > 0
+                    ]
+                    for r, rows in region["roles"].items()
+                },
+            }
+            for rc, region in regions.items()
+        },
+    }
+    patches = [p for p in history["patches"] if p["patch"] != patch] + [entry]
+    return {**history, "patches": sorted(patches, key=lambda p: patch_key(p["patch"]))}
+
+
+def load_history(path):
+    """The archive, or an empty one if the file does not exist; raises ValueError if unusable."""
+    if not os.path.exists(path):
+        return {"schema": 1, "patches": []}
+    with open(path) as f:
+        history = json.load(f)  # JSONDecodeError is a ValueError
+    if (
+        not isinstance(history, dict)
+        or history.get("schema") != 1
+        or not isinstance(history.get("patches"), list)
+    ):
+        raise ValueError("not a schema 1 archive")
+    return history
+
+
+def save_history(path, history):
+    # Write then rename: the archive is the only copy, a crash mid-write must not truncate it.
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(history, f, separators=(",", ":"))
+    os.replace(tmp, path)
+
+
+# --- 9. ENTRY POINT ---
 def main():
     load_dotenv()
     log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -737,6 +810,14 @@ def main():
         raise ValueError("Missing RIOT_API_KEY")
     if not mongo_uri:
         raise ValueError("Missing MONGODB_URI")
+
+    # Read the archive before touching anything: an unusable one must stop the run, not be
+    # replaced by an empty one.
+    try:
+        history = load_history(HISTORY_FILE)
+    except ValueError as e:
+        logger.error(f"Cannot use {HISTORY_FILE}: {e}. Nothing written.")
+        return 1
 
     watcher = LolWatcher(api_key)
     riot_watcher = RiotWatcher(api_key)
@@ -761,17 +842,28 @@ def main():
     purge_old_patches(matches_col, target_patch)
 
     logger.info("Generating Frontend JSON...")
+    now = datetime.now(timezone.utc)
+    matches = list(matches_col.find({}))
+    regions, player_performance = aggregate_regions(matches, tank_champs, valid_items)
     frontend_data = build_frontend_data(
-        list(matches_col.find({})),
+        len(matches),
         latest_ver,
         player_count,
-        tank_champs,
-        valid_items,
-        datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        regions,
+        player_performance,
+        now.strftime("%Y-%m-%d %H:%M UTC"),
     )
 
     with open(OUTPUT_FILE, "w") as f:
         json.dump(frontend_data, f)
+
+    if target_patch:
+        save_history(
+            HISTORY_FILE,
+            update_history(history, target_patch, regions, now.strftime("%Y-%m-%d")),
+        )
+    else:
+        logger.warning("Current patch unknown; history.json not updated.")
     logger.info(f"Complete. New Matches: {new_count}")
     return 0
 
