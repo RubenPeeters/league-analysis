@@ -139,14 +139,15 @@ def select_items(item_data):
 
 
 def load_static_data():
-    """Return (latest_ver, tank_champs, valid_items) from Data Dragon.
+    """Return (latest_ver, tank_champs, valid_items, boots) from Data Dragon.
 
-    Whatever was loaded before a failure is kept: latest_ver None, tank_champs empty and
-    valid_items None (no item filtering) are the fallbacks.
+    Whatever was loaded before a failure is kept: latest_ver None, tank_champs empty,
+    valid_items None (no item filtering) and boots empty are the fallbacks.
     """
     latest_ver = None
     tank_champs = set()
     valid_items = None
+    boots = set()
 
     try:
         # 1. Get Version
@@ -176,7 +177,7 @@ def load_static_data():
     except Exception as e:  # noqa: BLE001 - static data is optional, the run goes on without it
         logger.error(f"Static Data Error: {e}")
 
-    return latest_ver, tank_champs, valid_items
+    return latest_ver, tank_champs, valid_items, boots
 
 
 # --- 4. HELPER FUNCTIONS ---
@@ -525,8 +526,20 @@ def summarize_match(m, champ_id_to_name, tank_champs):
     return summary
 
 
+def item_shares(counts, games):
+    """The 8 items in most games: id, games and share (% of the champion's games)."""
+    ranked = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[:8]
+    return [{"id": i, "games": n, "share": round(n / games * 100, 1)} for i, n in ranked]
+
+
 def aggregate(
-    match_list, role_filter, region_code, champ_id_to_name, valid_items, player_performance
+    match_list,
+    role_filter,
+    region_code,
+    champ_id_to_name,
+    valid_items,
+    player_performance,
+    boots=frozenset(),
 ):
     """Stats of every champion picked or banned in one role, by pick rate; adds each player's
     games to player_performance."""
@@ -563,7 +576,6 @@ def aggregate(
 
         # --- CHAMPION STATS INITIALIZATION ---
         if c not in stats:
-            # Note: 'builds' is a list that will store every valid item set found
             stats[c] = {
                 "g": 0,
                 "w": 0,
@@ -571,7 +583,8 @@ def aggregate(
                 "d": 0,
                 "a": 0,
                 "b": 0,
-                "builds": [],
+                "items": Counter(),
+                "boots": Counter(),
                 "context_data": {},
             }
 
@@ -590,11 +603,9 @@ def aggregate(
             if i != 0 and (valid_items is None or i in valid_items):
                 valid_player_items.append(i)
 
-        # 2. Signature: Take top 3, SORT them, and tuple them
-        # Sorting ensures [Item A, Item B] counts the same as [Item B, Item A]
-        if len(valid_player_items) >= 2:  # Only count if they have at least 2 core items
-            build_signature = tuple(sorted(valid_player_items[:3]))
-            s["builds"].append(build_signature)
+        # 2. Count each item once per game; a game with few or no items still counts in "g".
+        for i in set(valid_player_items):
+            s["boots" if i in boots else "items"][i] += 1
 
         # --- CONTEXT LOGIC (Optional: Gather context stats) ---
         for tag in p["context"]:
@@ -620,7 +631,8 @@ def aggregate(
                         "d": 0,
                         "a": 0,
                         "b": 0,
-                        "builds": [],
+                        "items": Counter(),
+                        "boots": Counter(),
                         "context_data": {},
                     }
                 stats[bn]["b"] += 1
@@ -637,16 +649,6 @@ def aggregate(
         ban_rate = round((s["b"] / total_matches) * 100, 1)
         win_rate = round((s["w"] / s["g"]) * 100, 1) if s["g"] > 0 else 0
         kda = round((s["k"] + s["a"]) / (s["d"] if s["d"] > 0 else 1), 2)
-
-        # --- CALCULATE TOP BUILD ---
-        top_items = []
-        if s["builds"]:
-            # Counter finds the most common tuple signature
-            # most_common(1) returns [( (ItemA, ItemB, ItemC), Count )]
-            most_common = Counter(s["builds"]).most_common(1)
-            if most_common:
-                # Convert tuple back to list for JSON
-                top_items = list(most_common[0][0])
 
         # --- CALCULATE CONTEXT BUILDS ---
         context_builds = {}
@@ -674,7 +676,8 @@ def aggregate(
                     "win_rate": win_rate,
                     "ban_rate": ban_rate,
                     "kda": kda,
-                    "top_items": top_items,  # Now a sorted SET of items
+                    "items": item_shares(s["items"], s["g"]),
+                    "boots": item_shares(s["boots"], s["g"]),
                     "context_builds": context_builds,
                 }
             )
@@ -704,7 +707,13 @@ def build_leaderboards(player_performance):
 
 
 def build_frontend_data(
-    matches, ddragon_version, player_count, tank_champs, valid_items, last_updated
+    matches,
+    ddragon_version,
+    player_count,
+    tank_champs,
+    valid_items,
+    last_updated,
+    boots=frozenset(),
 ):
     """Turn all stored matches (any region) into the data.json structure."""
     # Use the patch version we got from Data Dragon API, not from database
@@ -741,6 +750,7 @@ def build_frontend_data(
                 champ_id_to_name,
                 valid_items,
                 player_performance,
+                boots,
             )[:15]
             for r in VALID_ROLES
         }
@@ -849,7 +859,7 @@ def main():
     watcher = LolWatcher(api_key)
     riot_watcher = RiotWatcher(api_key)
     matches_col = connect_db(mongo_uri)
-    latest_ver, tank_champs, valid_items = load_static_data()
+    latest_ver, tank_champs, valid_items, boots = load_static_data()
 
     target_patch = get_short_version(latest_ver) if latest_ver else None
 
@@ -885,6 +895,7 @@ def main():
         tank_champs,
         valid_items,
         now.strftime("%Y-%m-%d %H:%M UTC"),
+        boots,
     )
 
     with open(OUTPUT_FILE, "w") as f:
