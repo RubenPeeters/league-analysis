@@ -504,12 +504,8 @@ def aggregate(
         return []
 
     # 1. Loop through all matches to gather raw stats
-    for m in match_list:
-        # Find the player in the specific role (e.g. JUNGLE)
-        p = next((x for x in m["participants"] if x["role"] == role_filter), None)
-        if not p:
-            continue
-
+    # Both teams' players in the role count, not only the blue-side one (#10).
+    for p in (x for m in match_list for x in m["participants"] if x["role"] == role_filter):
         c = p["champ"]
 
         # --- LEADERBOARD LOGIC (keyed by role:champion) ---
@@ -604,7 +600,8 @@ def aggregate(
             continue
 
         # Basic Math
-        pick_rate = round((s["g"] / total_matches) * 100, 1)
+        # Two role slots per match, so a role's pick rates still sum to about 100 (#10).
+        pick_rate = round((s["g"] / (2 * total_matches)) * 100, 1)
         ban_rate = round((s["b"] / total_matches) * 100, 1)
         win_rate = round((s["w"] / s["g"]) * 100, 1) if s["g"] > 0 else 0
         kda = round((s["k"] + s["a"]) / (s["d"] if s["d"] > 0 else 1), 2)

@@ -155,14 +155,52 @@ def test_pick_ban_and_win_rate():
     garen = top["Garen"]
     assert (garen["count"], garen["pick_rate"], garen["win_rate"], garen["ban_rate"]) == (
         3,
-        75.0,
+        37.5,  # 3 picks over 8 TOP slots (2 per match)
         66.7,
         25.0,
     )
     assert garen["kda"] == 5.0  # (7 kills + 3 assists) / 2 deaths
 
     darius = top["Darius"]
-    assert (darius["pick_rate"], darius["ban_rate"], darius["win_rate"]) == (25.0, 50.0, 100.0)
+    assert (darius["pick_rate"], darius["ban_rate"], darius["win_rate"]) == (12.5, 50.0, 100.0)
+
+
+def test_red_side_champion_is_counted():
+    matches = [
+        match([player(1, "Garen", 100, "TOP"), player(2, "Darius", 200, "TOP", win=False)]),
+        match([player(1, "Garen", 100, "TOP"), player(3, "Sion", 200, "TOP")]),
+    ]
+    top = by_name(build(matches)["regions"]["euw1"]["TOP"])
+    assert (top["Darius"]["count"], top["Darius"]["pick_rate"], top["Darius"]["win_rate"]) == (
+        1,
+        25.0,
+        0,
+    )
+    assert (top["Garen"]["count"], top["Garen"]["pick_rate"]) == (2, 50.0)
+
+
+def test_pick_rates_add_up_to_100_per_role():
+    roles = ("TOP", "JUNGLE")
+    matches = [
+        match(
+            [player(n, f"B{n % 3}", 100, r) for r in roles]
+            + [player(n, f"R{n % 2}", 200, r) for r in roles]
+        )
+        for n in range(5)
+    ]
+    region = build(matches)["regions"]["euw1"]
+    for r in roles:
+        assert sum(c["pick_rate"] for c in region[r]) == 100.0
+
+
+def test_leaderboard_contains_red_side_player():
+    matches = [
+        match(
+            [player(1, "Garen", 100, "TOP", name="Ann"), player(2, "Darius", 200, "TOP", name="Bo")]
+        )
+    ]
+    lb = build(matches)["leaderboards"]
+    assert [e["player"] for e in lb["TOP:Darius"]] == ["Bo#EUW"]
 
 
 def test_kda_with_zero_deaths_divides_by_one():
