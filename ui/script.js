@@ -100,6 +100,9 @@ function hideTip() { document.getElementById('cv-tip').classList.remove('show');
 ['mouseout', 'focusout'].forEach(evt => document.addEventListener(evt, e => {
     if (e.target.closest && e.target.closest('.has-tip')) hideTip();
 }));
+// The tip is placed once in page coordinates, so scrolling (any scroller, hence capture) or resizing would strand it.
+document.addEventListener('scroll', hideTip, { capture: true, passive: true });
+window.addEventListener('resize', hideTip);
 
 function pct(games, total) { return total ? Math.round((games / total) * 1000) / 10 : 0; }
 
@@ -251,13 +254,13 @@ function renderRunes(container, champ) {
             r.appendChild(withTip(icon(rune(style), 'cv-tree'), { title: `${rune(style).name} tree` }));
             ids.forEach(id => {
                 const info = rune(id);
-                r.appendChild(withTip(icon(info, 'cv-rune'), { title: info.name, about: info.about, lines: [selNote] }));
+                r.appendChild(withTip(icon(info, 'cv-rune'), { title: info.name, about: info.about, games: sel.games, lines: [selNote] }));
             });
             return r;
         };
         picks.append(row(sel.primary, top.primary_style), row(sel.secondary, top.secondary_style));
         const shards = withTip(el('div', 'cv-shards', sel.shards.map(id => SHARD_NAMES[id] || `Shard ${id}`).join(' · ')),
-            { title: 'Stat shards', lines: [selNote] });
+            { title: 'Stat shards', games: sel.games, lines: [selNote] });
         picks.appendChild(shards);
     }
     main.appendChild(picks);
@@ -567,5 +570,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 if (typeof module !== 'undefined') {
-    module.exports = { esc, tipHtml, LOW_SAMPLE };
+    module.exports = { esc, tipHtml, renderRunes, LOW_SAMPLE };
 }
