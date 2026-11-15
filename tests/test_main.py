@@ -64,8 +64,8 @@ def match(participants, bans=(), region="euw1", version="15.22.700.1"):
     }
 
 
-def build(matches, valid_items=None, tank_champs=frozenset()):
-    return build_frontend_data(matches, "15.22.1", 10, tank_champs, valid_items, "now")
+def build(matches, valid_items=None, tank_champs=frozenset(), boots=frozenset()):
+    return build_frontend_data(matches, "15.22.1", 10, tank_champs, valid_items, "now", boots)
 
 
 def by_name(rows):
@@ -219,26 +219,49 @@ def test_banned_never_picked_champion_is_listed_with_zero_games():
     matches = [match([player(1, "Garen", 100, "TOP"), player(2, "Darius", 200, "JUNGLE")], [2])]
     darius = by_name(build(matches)["regions"]["euw1"]["TOP"])["Darius"]
     assert (darius["count"], darius["win_rate"], darius["ban_rate"]) == (0, 0, 100.0)
-    assert darius["top_items"] == []
+    assert (darius["items"], darius["boots"]) == ([], [])
 
 
-def test_top_build_signature_is_sorted_first_three_valid_items():
+def test_item_shares_are_over_all_games_with_boots_apart():
+    boots = {3020}
     matches = [
-        # the component 1001 is dropped; only the first 3 valid items count, sorted
-        match([player(1, "Garen", 100, "TOP", items=[3002, 1001, 3001, 3004, 3003])]),
-        match([player(1, "Garen", 100, "TOP", items=[3001, 3004, 3002])]),
-        match([player(1, "Garen", 100, "TOP", items=[3003, 3004])]),
-        # a single valid item is not a build
+        # the component 1001 is dropped; a duplicate item counts once
+        match([player(1, "Garen", 100, "TOP", items=[3002, 1001, 3001, 3020, 3001])]),
+        match([player(1, "Garen", 100, "TOP", items=[3001, 3020])]),
         match([player(1, "Garen", 100, "TOP", items=[3003])]),
+        # a game without finished items still counts in the denominator
+        match([player(1, "Garen", 100, "TOP", items=[1001])]),
     ]
+    garen = build(matches, valid_items=LEGENDARY | boots, boots=boots)["regions"]["euw1"]["TOP"][0]
+    assert garen["count"] == 4
+    assert garen["items"] == [
+        {"id": 3001, "games": 2, "share": 50.0},
+        {"id": 3002, "games": 1, "share": 25.0},
+        {"id": 3003, "games": 1, "share": 25.0},
+    ]
+    assert garen["boots"] == [{"id": 3020, "games": 2, "share": 50.0}]
+
+
+def test_items_are_capped_at_eight_by_share():
+    ids = list(range(4001, 4011))
+    matches = [
+        match([player(1, "Garen", 100, "TOP", items=ids[:6])]),
+        match([player(1, "Garen", 100, "TOP", items=ids[4:])]),
+    ]
+    garen = build(matches)["regions"]["euw1"]["TOP"][0]
+    assert [i["id"] for i in garen["items"]] == [4005, 4006, 4001, 4002, 4003, 4004, 4007, 4008]
+
+
+def test_champion_without_finished_items_has_empty_lists():
+    matches = [match([player(1, "Garen", 100, "TOP", items=[1001])])]
     garen = build(matches, valid_items=LEGENDARY)["regions"]["euw1"]["TOP"][0]
-    assert garen["top_items"] == [3001, 3002, 3004]
+    assert (garen["count"], garen["items"], garen["boots"]) == (1, [], [])
 
 
 def test_no_item_data_means_no_item_filtering():
     matches = [match([player(1, "Garen", 100, "TOP", items=[1001, 1002])])]
     garen = build(matches, valid_items=None)["regions"]["euw1"]["TOP"][0]
-    assert garen["top_items"] == [1001, 1002]
+    assert [i["id"] for i in garen["items"]] == [1001, 1002]
 
 
 def ad_game(items):
@@ -368,7 +391,7 @@ def run_main(monkeypatch, tmp_path, watcher):
     monkeypatch.setattr(main, "LolWatcher", lambda key: watcher)
     monkeypatch.setattr(main, "RiotWatcher", lambda key: SimpleNamespace())
     monkeypatch.setattr(main, "connect_db", lambda uri: col)
-    monkeypatch.setattr(main, "load_static_data", lambda: ("15.22.1", set(), None))
+    monkeypatch.setattr(main, "load_static_data", lambda: ("15.22.1", set(), None, set()))
     return main.main(), col, tmp_path / "data.json"
 
 

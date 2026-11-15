@@ -433,7 +433,27 @@ tbody tr a { position: relative; z-index: 2; }
 
 .item-row {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
+    margin-bottom: 8px;
+}
+
+.item-cell {
+    margin: 0;
+    text-align: center;
+    cursor: default;
+}
+
+.item-cell figcaption {
+    font-size: 0.75rem;
+    color: var(--muted);
+}
+
+.item-games { display: none; }
+
+.item-cell:hover .item-games,
+.item-cell:focus .item-games {
+    display: block;
 }
 
 .item-icon {
