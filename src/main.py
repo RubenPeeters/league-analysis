@@ -100,6 +100,44 @@ def connect_db(mongo_uri):
 
 
 # --- 3. STATIC DATA (Context & Item Filtering) ---
+# Cheapest finished non-boot item in 16.22.1 is Mejai's Soulstealer (1500); the dearest
+# starting item is a Guardian's item (950). 1000 sits between them.
+FINISHED_MIN_GOLD = 1000
+
+
+def select_items(item_data):
+    """Return (finished, boots), sets of item ids, from the "data" of Data Dragon item.json."""
+    pending = {d["specialRecipe"] for d in item_data.values() if d.get("specialRecipe")}
+
+    def transformed(i_id, d):
+        # Reached without a purchase: a special recipe (Muramana) or built only from items
+        # that cannot be bought (support upgrades from Bounty of Worlds). Only the end of the
+        # chain counts, so Runic Compass (which turns into Bounty of Worlds) is dropped.
+        frm = d.get("from") or []
+        from_unbuyable = frm and all(
+            not item_data.get(f, {}).get("gold", {}).get("purchasable", True) for f in frm
+        )
+        return bool(d.get("specialRecipe") or from_unbuyable) and int(i_id) not in pending
+
+    finished, boots = set(), set()
+    for i_id, d in item_data.items():
+        tags = d.get("tags", [])
+        if not d.get("maps", {}).get("11") or {"Consumable", "Trinket"} & set(tags):
+            continue
+        gold = d.get("gold", {})
+        is_transformed = transformed(i_id, d)
+        if "Boots" in tags:
+            # Tier 1 boots are the ones built from nothing; tier 2 boots keep their `into`.
+            if d.get("from") and (gold.get("purchasable") or is_transformed):
+                boots.add(int(i_id))
+        elif not d.get("into") and (
+            is_transformed
+            or (gold.get("purchasable") and gold.get("total", 0) >= FINISHED_MIN_GOLD)
+        ):
+            finished.add(int(i_id))
+    return finished, boots
+
+
 def load_static_data():
     """Return (latest_ver, tank_champs, valid_items) from Data Dragon.
 
@@ -130,16 +168,8 @@ def load_static_data():
                 f"https://ddragon.leagueoflegends.com/cdn/{latest_ver}/data/en_US/item.json"
             )
             if item_res.ok:
-                i_data = item_res.json()["data"]
-                valid_items = set()
-                for i_id, d in i_data.items():
-                    depth = d.get("depth", 1)
-                    is_boot = "Boots" in d.get("tags", [])
-
-                    # RULE: Keep item if Depth >= 3 (Legendary) OR Depth 2 Boots
-                    # (Plated Steelcaps etc)
-                    if depth >= 3 or (depth == 2 and is_boot):
-                        valid_items.add(int(i_id))
+                finished, boots = select_items(item_res.json()["data"])
+                valid_items = finished | boots
 
                 logger.info(f"Loaded {len(valid_items)} Valid Items (Filtered out components).")
 

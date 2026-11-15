@@ -14,6 +14,7 @@ from main import (
     build_frontend_data,
     extract_bans,
     get_short_version,
+    select_items,
     slim_match,
     update_history,
 )
@@ -404,6 +405,38 @@ def test_insert_error_other_than_duplicate_is_logged(monkeypatch, tmp_path, capl
     assert code == 0
     assert "Could not save euw1_1: disk full" in caplog.text
     assert "Could not save kr_1" not in caplog.text
+
+
+# --- Data Dragon item selection ---
+
+
+def item(cost, buy=True, rift=True, tags=(), frm=None, into=None, recipe=None):
+    """A Data Dragon item.json entry with only the fields select_items reads."""
+    d = {"gold": {"purchasable": buy, "total": cost}, "maps": {"11": rift}, "tags": list(tags)}
+    d.update({k: v for k, v in (("from", frm), ("into", into), ("specialRecipe", recipe)) if v})
+    return d
+
+
+ITEMS = {
+    "3031": item(3500, frm=["1038"]),  # Infinity Edge, depth 2
+    "1038": item(1300, into=["3031"]),  # B. F. Sword, a component
+    "2003": item(50, tags=["Consumable"]),  # Health Potion
+    "1054": item(450),  # Doran's Shield, starting item
+    "3009": item(3000, rift=False),  # finished, but not on Summoner's Rift
+    "1001": item(300, tags=["Boots"], into=["3020"]),  # tier 1 boots
+    "3020": item(1100, tags=["Boots"], frm=["1001"], into=["3175"]),  # tier 2 boots
+    "3004": item(2900),  # Manamune
+    "3042": item(2900, buy=False, recipe=3004),  # Muramana, transformed
+    "3866": item(400, buy=False, recipe=3865),  # Runic Compass, turns into Bounty of Worlds
+    "3867": item(400, buy=False, recipe=3866, into=["3869"]),  # Bounty of Worlds
+    "3869": item(400, frm=["3867"]),  # Celestial Opposition, support upgrade
+}
+
+
+def test_select_items_keeps_finished_and_transformed_items():
+    finished, boots = select_items(ITEMS)
+    assert finished == {3031, 3004, 3042, 3869}
+    assert boots == {3020}
 
 
 # --- history.json ---
