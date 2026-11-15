@@ -15,11 +15,13 @@ from main import (
     RANKED_SOLO_QUEUE,
     REGIONS,
     RiotAuthError,
+    aggregate,
     connect_db,
     load_static_data,
     retention_window,
     scan_match_list,
     smart_request,
+    summarize_match,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,29 @@ logger = logging.getLogger(__name__)
 ROUTING = {"kr": "asia", "euw1": "europe"}
 # Riot's largest page of a match list.
 MATCHLIST_PAGE = 100
+
+
+# A champion (per role and region) needs this many of the player's games to be analysed.
+PLAYER_MIN_GAMES = 5
+# A lane opponent needs this many games against it.
+OPPONENT_MIN_GAMES = 3
+STARTING_SETS = 3
+# Keys of aggregate()'s champion stats that describe the player; the rest are ladder-only.
+PLAYER_KEYS = (
+    "win_rate",
+    "item_games",
+    "items",
+    "boots",
+    "rune_games",
+    "runes",
+    "spells",
+    "timeline_games",
+    "first_items",
+    "paths",
+    "boots_position",
+    "skill_start",
+    "skill_max",
+)
 
 
 class UnknownRiotIdError(LookupError):
@@ -102,6 +127,146 @@ def download_player_matches(
         f"{counts['timelines']} timelines fetched."
     )
     return puuid, found
+
+
+def most_frequent(counts):
+    """(key, count) of the largest count, smallest key on a tie; None when counts is empty."""
+    return min(counts.items(), key=lambda x: (-x[1], x[0])) if counts else None
+
+
+def add_ladder_shares(entry, ladder_champ):
+    """Give each item, boots, rune page and first item of entry the ladder's share (0.0 when the
+    ladder never has it; None without the champion or without games of that kind) and entry the
+    ladder's game counts. ladder_champ is an uncapped aggregate() entry."""
+    lc = ladder_champ or {}
+    by_id = lambda r: r["id"]
+    page = lambda r: (r["keystone"], r["primary_style"], r["secondary_style"])
+    for rows, ladder_rows, games, key in (
+        (
+            entry["items"] + entry["boots"],
+            lc.get("items", []) + lc.get("boots", []),
+            "item_games",
+            by_id,
+        ),
+        (entry["first_items"], lc.get("first_items", []), "timeline_games", by_id),
+        (entry["runes"], lc.get("runes", []), "rune_games", page),
+    ):
+        shares = {key(r): r["share"] for r in ladder_rows}
+        for r in rows:
+            r["ladder_share"] = shares.get(key(r), 0.0) if lc.get(games) else None
+    entry["ladder"] = ladder_champ and {
+        "games": ladder_champ["count"],
+        **{k: ladder_champ[k] for k in ("item_games", "rune_games", "timeline_games")},
+    }
+
+
+def analyze_player(matches, puuid, ladder_matches, valid_items=None, boots=frozenset()):
+    """Builds of the player puuid per champion and role (at least PLAYER_MIN_GAMES games) and per
+    lane opponent (at least OPPONENT_MIN_GAMES games), next to the ladder's shares.
+
+    matches are stored match documents; ladder_matches are the stored matches of the current
+    patch, the ones data.json is built from. Remakes are left out. Pure: the result is
+    JSON-serialisable.
+    """
+    ladder_summaries = {}
+    for m in ladder_matches:
+        ladder_summaries.setdefault(m.get("_region"), []).append(summarize_match(m, {}, set(), {}))
+
+    # (region, role, champion) -> the player's summarized games, opponent as the only context
+    games = {}
+    for m in matches:
+        raw = m.get("info", {}).get("participants", [])
+        mine = next((i for i, p in enumerate(raw) if p.get("puuid") == puuid), None)
+        if mine is None:
+            continue
+        summary = summarize_match(m, {}, set(), {})
+        if summary["participants"][mine]["remake"]:
+            continue
+        me, my_raw = summary["participants"][mine], raw[mine]
+        opponent = next(
+            (
+                p["championName"]
+                for p in raw
+                if p["teamId"] != my_raw["teamId"] and p["teamPosition"] == my_raw["teamPosition"]
+            ),
+            None,
+        )
+        me["context"] = [opponent] if opponent else []
+        start = (me["timeline"] or {}).get("start")
+        me["start"] = tuple(sorted(start)) if start is not None else None
+        games.setdefault((m.get("_region"), me["role"], me["champ"]), []).append(me)
+
+    champions = []
+    for (region, role, champ), mine in games.items():
+        if len(mine) < PLAYER_MIN_GAMES:
+            continue
+        summaries = [{"bans": [], "participants": [p]} for p in mine]
+        # One other game is enough: the opponent side already has OPPONENT_MIN_GAMES.
+        (stats,) = aggregate(
+            summaries, role, region, {}, valid_items, {}, boots, OPPONENT_MIN_GAMES, 1
+        )
+        entry = {"region": region, "role": role, "champion": champ, "games": stats["count"]}
+        entry.update({k: stats[k] for k in PLAYER_KEYS})
+
+        starts = Counter(p["start"] for p in mine if p["start"] is not None)
+        entry["start_games"] = starts.total()
+        entry["starting_items"] = [
+            {"ids": list(ids), "games": g}
+            for ids, g in sorted(starts.items(), key=lambda x: (-x[1], x[0]))[:STARTING_SETS]
+        ]
+
+        ladder_champ = next(
+            (
+                c
+                for c in aggregate(
+                    ladder_summaries.get(region, []),
+                    role,
+                    region,
+                    {},
+                    valid_items,
+                    {},
+                    boots,
+                    capped=False,
+                )
+                if c["name"] == champ and c["count"] > 0
+            ),
+            None,
+        )
+        add_ladder_shares(entry, ladder_champ)
+
+        by_opponent = {}
+        for p in mine:
+            if p["context"]:
+                by_opponent.setdefault(p["context"][0], []).append(p)
+        opponents = []
+        for opp, opp_games in by_opponent.items():
+            if len(opp_games) < OPPONENT_MIN_GAMES:
+                continue
+            keystone = most_frequent(
+                Counter(
+                    p["perks"]["primary"][0] for p in opp_games if (p["perks"] or {}).get("primary")
+                )
+            )
+            start = most_frequent(Counter(p["start"] for p in opp_games if p["start"] is not None))
+            card = stats["matchups"].get(opp)
+            opponents.append(
+                {
+                    "champion": opp,
+                    "games": len(opp_games),
+                    "win_rate": round(
+                        sum(bool(p["win"]) for p in opp_games) / len(opp_games) * 100, 1
+                    ),
+                    "keystone": keystone and {"id": keystone[0], "games": keystone[1]},
+                    "starting_items": start and {"ids": list(start[0]), "games": start[1]},
+                    "other_games": len(mine) - len(opp_games),
+                    "items": card["items"] if card else [],
+                }
+            )
+        entry["opponents"] = sorted(opponents, key=lambda o: (-o["games"], o["champion"]))
+        champions.append(entry)
+
+    champions.sort(key=lambda c: (-c["games"], c["region"] or "", c["role"], c["champion"]))
+    return {"puuid": puuid, "champions": champions}
 
 
 def main(argv):

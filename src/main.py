@@ -434,14 +434,15 @@ def analyze_enemy_comp(match_info, my_team_id, tank_champs, damage_shares):
     return tags
 
 
-def matchup_cards(s):
-    """Per enemy type: the items (boots included) whose share against that type differs by at
-    least MATCHUP_MIN_DIFF points from their share in the champion's other games."""
+def matchup_cards(s, min_games=MATCHUP_MIN_GAMES, min_other=MATCHUP_MIN_GAMES):
+    """Per enemy type (or other context): the items (boots included) whose share in its games
+    differs by at least MATCHUP_MIN_DIFF points from their share in the champion's other games;
+    min_games games in the context and min_other other games."""
     all_items = s["items"] + s["boots"]
     cards = {}
     for tag, ctx in s["context_data"].items():
         games, other = ctx["g"], s["ig"] - ctx["g"]
-        if games < MATCHUP_MIN_GAMES or other < MATCHUP_MIN_GAMES:
+        if games < min_games or other < min_other:
             continue
         rows = []
         for i, total in all_items.items():
@@ -914,9 +915,10 @@ def summarize_match(m, champ_id_to_name, tank_champs, damage_shares):
     return summary
 
 
-def item_shares(counts, games):
-    """The 8 items in most games: id, games and share (% of the champion's games)."""
-    ranked = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[:8]
+def item_shares(counts, games, limit=8):
+    """The limit (None: all) items in most games: id, games and share (% of the champion's
+    games)."""
+    ranked = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[:limit]
     return [{"id": i, "games": n, "share": round(n / games * 100, 1)} for i, n in ranked]
 
 
@@ -924,10 +926,11 @@ RUNE_PAGES = 3
 SPELL_PAIRS = 2
 
 
-def rune_stats(s):
-    """The champion's most frequent rune pages and spell pairs, shares over games with runes."""
+def rune_stats(s, pages_limit=RUNE_PAGES):
+    """The champion's most frequent rune pages (pages_limit, None: all) and spell pairs, shares
+    over games with runes."""
     rg = s["rg"]
-    pages = sorted(s["pages"].items(), key=lambda x: (-x[1][0], x[0]))[:RUNE_PAGES]
+    pages = sorted(s["pages"].items(), key=lambda x: (-x[1][0], x[0]))[:pages_limit]
     runes = [
         {
             "keystone": key[0],
@@ -1058,9 +1061,12 @@ def aggregate(
     valid_items,
     player_performance,
     boots=frozenset(),
+    matchup_min_games=MATCHUP_MIN_GAMES,
+    matchup_min_other=MATCHUP_MIN_GAMES,
+    capped=True,
 ):
     """Stats of every champion picked or banned in one role, by pick rate; adds each player's
-    games to player_performance."""
+    games to player_performance. capped=False lists every item and rune page."""
     stats = {}
     total_matches = len(match_list)
     if total_matches == 0:
@@ -1192,10 +1198,10 @@ def aggregate(
                     "ban_rate": ban_rate,
                     "kda": kda,
                     "item_games": s["ig"],
-                    "items": item_shares(s["items"], s["ig"]),
-                    "boots": item_shares(s["boots"], s["ig"]),
-                    "matchups": matchup_cards(s),
-                    **rune_stats(s),
+                    "items": item_shares(s["items"], s["ig"], 8 if capped else None),
+                    "boots": item_shares(s["boots"], s["ig"], 8 if capped else None),
+                    "matchups": matchup_cards(s, matchup_min_games, matchup_min_other),
+                    **rune_stats(s, RUNE_PAGES if capped else None),
                     **order_stats(s),
                 }
             )

@@ -1,9 +1,22 @@
 """Unit tests for src/player.py on hand-written fixtures; no Riot API, no MongoDB."""
 
+import json
 from types import SimpleNamespace
 
 import pytest
-from test_main import FakeCollection, api_error, ev, fake_watcher, stored
+from test_main import (
+    BOOTS,
+    LEGENDARY,
+    FakeCollection,
+    api_error,
+    buys,
+    ev,
+    fake_watcher,
+    match,
+    page,
+    stored,
+)
+from test_main import player as participant
 
 import main
 import player
@@ -130,3 +143,149 @@ def test_start_items_are_first_minute_purchases_with_undo_applied():
     slim = main.slim_timeline(timeline, {"pu1"}, {3031})
     assert slim["pu1"]["start"] == [1055, 2003, 3340]
     assert slim["pu1"]["items"] == []
+
+
+STARTER = (1055, 2003)
+
+
+def game(
+    champ="Garen",
+    opp="Darius",
+    items=(3001,),
+    win=True,
+    keystone=8010,
+    start=STARTER,
+    remake=None,
+    timeline=True,
+):
+    """A stored match of "pu-Me" in TOP against opp (None: no enemy TOP), with a timeline whose
+    purchases are items in order and whose first-minute purchases are start."""
+    ps = [
+        participant(1, champ, 100, "TOP", win=win, items=items, name="Me", remake=remake),
+        participant(3, "Lee Sin", 200, "JUNGLE", items=(3002,), name="Jg"),
+    ]
+    ps[0]["perks"] = page(keystone=keystone)
+    ps[0]["summoner1Id"], ps[0]["summoner2Id"] = 4, 12
+    if opp:
+        ps.append(participant(2, opp, 200, "TOP", win=not win, items=(3003,), name="Opp"))
+    m = match(ps)
+    if timeline:
+        m["timeline"] = {
+            "pu-Me": {
+                "items": buys(*((i, 100_000 * (n + 1)) for n, i in enumerate(items))),
+                "skills": [],
+                "start": list(start),
+            }
+        }
+    return m
+
+
+def analyze(matches, ladder=()):
+    result = player.analyze_player(matches, "pu-Me", ladder, LEGENDARY | BOOTS, BOOTS)
+    json.dumps(result)
+    return result["champions"]
+
+
+def test_champion_needs_five_games_without_remakes():
+    assert analyze([game()] * 4 + [game(remake=True)]) == []
+    (garen,) = analyze([game(win=False)] + [game()] * 4 + [game(remake=True)])
+    assert (garen["region"], garen["role"], garen["champion"]) == ("euw1", "TOP", "Garen")
+    assert (garen["games"], garen["win_rate"], garen["item_games"]) == (5, 80.0, 5)
+    assert garen["items"][0] == {"id": 3001, "games": 5, "share": 100.0, "ladder_share": None}
+    assert garen["runes"][0]["keystone"] == 8010
+    assert garen["spells"][0] == {"ids": [4, 12], "games": 5, "share": 100.0}
+
+
+def test_matches_without_timeline_count_for_builds_but_not_for_order_or_start():
+    matches = [game(start=(1055, 2003, 2003))] * 2 + [game(start=(1054,))] + [game()] * 2
+    matches += [game(start=(2033,)), game(timeline=False)]
+    (garen,) = analyze(matches)
+    assert (garen["games"], garen["timeline_games"], garen["start_games"]) == (7, 6, 6)
+    assert garen["first_items"][0]["games"] == 6
+    assert garen["starting_items"] == [
+        {"ids": [1055, 2003], "games": 2},
+        {"ids": [1055, 2003, 2003], "games": 2},
+        {"ids": [1054], "games": 1},
+    ]
+
+
+def test_lane_opponent_needs_three_games_and_ignores_other_roles():
+    matches = [game(opp="Darius", items=(3001, 3004), keystone=8437, start=(1054,))] * 3
+    matches += [game(opp="Sett")] * 2 + [game(opp=None)]
+    (garen,) = analyze(matches)
+    (darius,) = garen["opponents"]
+    assert darius == {
+        "champion": "Darius",
+        "games": 3,
+        "win_rate": 100.0,
+        "keystone": {"id": 8437, "games": 3},
+        "starting_items": {"ids": [1054], "games": 3},
+        "other_games": 3,
+        "items": [
+            {"id": 3004, "games": 3, "share": 100.0, "other_games": 0, "other_share": 0.0},
+        ],
+    }
+
+
+def test_lane_opponent_item_differences_need_only_one_other_game():
+    (garen,) = analyze([game(opp="Darius", items=(3004,))] * 4 + [game(opp="Sett")])
+    (darius,) = garen["opponents"]
+    assert darius["other_games"] == 1
+    assert [(r["id"], r["share"], r["other_share"]) for r in darius["items"]] == [
+        (3001, 0.0, 100.0),
+        (3004, 100.0, 0.0),
+    ]
+    (garen,) = analyze([game(opp="Darius", items=(3004,))] * 5)
+    assert garen["opponents"][0]["items"] == []
+
+
+def test_ladder_shares_where_the_ladder_has_the_champion():
+    ladder_games = [
+        match([participant(1, "Garen", 100, "TOP", items=(3001,), name=f"L{n}")]) for n in range(3)
+    ] + [match([participant(1, "Garen", 100, "TOP", items=(3002,), name="L9")])]
+    for m in ladder_games:
+        m["info"]["participants"][0]["perks"] = page(keystone=8010)
+        m["timeline"] = {
+            p["puuid"]: {"items": buys((p["item0"], 1)), "skills": []}
+            for p in m["info"]["participants"]
+        }
+    garen, darius = analyze([game()] * 6 + [game(champ="Darius", opp="Garen")] * 5, ladder_games)
+    assert garen["ladder"] == {"games": 4, "item_games": 4, "rune_games": 4, "timeline_games": 4}
+    assert garen["items"][0]["ladder_share"] == 75.0
+    assert garen["runes"][0]["ladder_share"] == 100.0
+    assert garen["first_items"][0]["ladder_share"] == 75.0
+    assert darius["ladder"] is None
+    assert darius["items"][0]["ladder_share"] is None
+    assert darius["runes"][0]["ladder_share"] is None
+    assert darius["first_items"][0]["ladder_share"] is None
+
+
+def test_regions_are_kept_apart_and_other_players_have_no_result():
+    kr = [game() for _ in range(5)]
+    for m in kr:
+        m["_region"] = "kr"
+    euw, korea = analyze([game()] * 6 + kr)
+    assert [(c["region"], c["games"]) for c in (euw, korea)] == [("euw1", 6), ("kr", 5)]
+    assert player.analyze_player([game()] * 5, "pu-X", {}) == {"puuid": "pu-X", "champions": []}
+
+
+def test_ladder_shares_beyond_the_displayed_rows_and_zero_when_never_seen():
+    six, two = (4001, 4002, 4003, 4004, 4005, 4006), (4007, 4008)
+    builds = [six] * 3 + [two] * 3 + [(4008, 4009)]
+    keystones = [8005, 8005, 8008, 8008, 8021, 8021, 8010]
+    ladder_games = []
+    for n, (items, keystone) in enumerate(zip(builds, keystones)):
+        p = participant(1, "Garen", 100, "TOP", items=items, name=f"L{n}")
+        p["perks"] = page(keystone=keystone)
+        m = match([p])
+        m["timeline"] = {p["puuid"]: {"items": buys((items[0], 1)), "skills": []}}
+        ladder_games.append(m)
+
+    matches = [game(items=(4009, 4010), keystone=8010)] * 5
+    (garen,) = player.analyze_player(matches, "pu-Me", ladder_games)["champions"]
+    items = {r["id"]: r["ladder_share"] for r in garen["items"]}
+    assert (items[4009], items[4010]) == (14.3, 0.0)
+    assert garen["runes"][0]["ladder_share"] == 14.3
+    assert garen["first_items"] == [
+        {"id": 4009, "games": 5, "share": 100.0, "win_rate": 100.0, "ladder_share": 0.0}
+    ]
