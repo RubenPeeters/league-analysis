@@ -520,6 +520,13 @@ tbody tr a { position: relative; z-index: 2; }
     font-size: 0.8rem;
 }
 
+#detail-runes, #detail-spells {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
 .small-item-icon {
     width: 32px; height: 32px;
     border-radius: 4px;

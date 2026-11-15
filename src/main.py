@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 REGIONS = [("kr", "Korea"), ("euw1", "Europe West")]
 VALID_ROLES = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]
 MATCH_HISTORY_COUNT = 100
+RANKED_SOLO_QUEUE = 420
 
 # Fallback pro players for season reset (when ladder is empty)
 FALLBACK_PRO_PLAYERS = {
@@ -93,7 +94,8 @@ def connect_db(mongo_uri):
         matches_col = db["matches"]
         matches_col.create_index("metadata.matchId", unique=True)
         logger.info("Connected to MongoDB Atlas")
-        return matches_col
+        # Ids of listed matches older than the retention window, keyed by match id.
+        return matches_col, db["old_match_ids"]
     except Exception as e:
         logger.critical(f"DB Error: {e}")
         raise
@@ -139,11 +141,12 @@ def select_items(item_data):
 
 
 def load_static_data():
-    """Return (latest_ver, tank_champs, valid_items, boots) from Data Dragon.
+    """Return (latest_ver, tank_champs, valid_items, boots, versions) from Data Dragon.
 
     Whatever was loaded before a failure is kept: latest_ver None, tank_champs empty,
-    valid_items None (no item filtering) and boots empty are the fallbacks.
+    valid_items None (no item filtering), boots empty and versions empty are the fallbacks.
     """
+    versions = []
     latest_ver = None
     tank_champs = set()
     valid_items = None
@@ -153,7 +156,8 @@ def load_static_data():
         # 1. Get Version
         ver_res = requests.get("https://ddragon.leagueoflegends.com/api/versions.json")
         if ver_res.ok:
-            latest_ver = ver_res.json()[0]
+            versions = ver_res.json()
+            latest_ver = versions[0]
 
             # 2. Get Champions (For Tank Context)
             champ_res = requests.get(
@@ -177,7 +181,7 @@ def load_static_data():
     except Exception as e:  # noqa: BLE001 - static data is optional, the run goes on without it
         logger.error(f"Static Data Error: {e}")
 
-    return latest_ver, tank_champs, valid_items, boots
+    return latest_ver, tank_champs, valid_items, boots, versions
 
 
 # --- 4. HELPER FUNCTIONS ---
@@ -211,10 +215,41 @@ def get_short_version(game_version):
     return f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else parts[0]
 
 
+def patch_key(patch):
+    return tuple(int(x) for x in patch.split("."))
+
+
+def retention_window(versions, keep_previous):
+    """The current patch and the keep_previous patches before it, newest first."""
+    return list(dict.fromkeys(get_short_version(v) for v in versions))[: keep_previous + 1]
+
+
+def is_older(patch, window):
+    """True when patch is older than every patch of the window."""
+    return patch_key(patch) < patch_key(window[-1])
+
+
 def extract_bans(match_info):
     return [
         b["championId"] for t in match_info["teams"] for b in t["bans"] if b["championId"] != -1
     ]
+
+
+def slim_perks(perks):
+    """The rune page of a participant's perks, or None when the response has no perks."""
+    if not perks:
+        return None
+    styles = {s.get("description"): s for s in perks.get("styles", [])}
+    primary = styles.get("primaryStyle", {})
+    sub = styles.get("subStyle", {})
+    shards = perks.get("statPerks", {})
+    return {
+        "primaryStyle": primary.get("style"),
+        "primary": [s.get("perk") for s in primary.get("selections", [])],
+        "subStyle": sub.get("style"),
+        "secondary": [s.get("perk") for s in sub.get("selections", [])],
+        "shards": [shards.get("offense"), shards.get("flex"), shards.get("defense")],
+    }
 
 
 def slim_match(match_detail, region_code):
@@ -246,6 +281,10 @@ def slim_match(match_detail, region_code):
                 "physicalDamageDealtToChampions": p.get("physicalDamageDealtToChampions", 0),
                 "magicDamageDealtToChampions": p.get("magicDamageDealtToChampions", 0),
                 "trueDamageDealtToChampions": p.get("trueDamageDealtToChampions", 0),
+                "perks": slim_perks(p.get("perks")),
+                "summoner1Id": p.get("summoner1Id"),
+                "summoner2Id": p.get("summoner2Id"),
+                "gameEndedInEarlySurrender": p.get("gameEndedInEarlySurrender"),
             }
         )
 
@@ -266,6 +305,9 @@ def slim_match(match_detail, region_code):
         "info": {
             "gameVersion": info.get("gameVersion"),
             "gameCreation": info.get("gameCreation"),
+            "queueId": info.get("queueId"),
+            # Always written, also as None: its presence marks a match slimmed with these fields.
+            "gameDuration": info.get("gameDuration"),
             "teams": slim_teams,
             "participants": slim_participants,
         },
@@ -323,7 +365,7 @@ def matchup_cards(s):
     all_items = s["items"] + s["boots"]
     cards = {}
     for tag, ctx in s["context_data"].items():
-        games, other = ctx["g"], s["g"] - ctx["g"]
+        games, other = ctx["g"], s["ig"] - ctx["g"]
         if games < MATCHUP_MIN_GAMES or other < MATCHUP_MIN_GAMES:
             continue
         rows = []
@@ -347,37 +389,67 @@ def matchup_cards(s):
 
 
 # --- 5. DB MAINTENANCE ---
-def purge_old_patches(matches_col, target_patch):
-    if target_patch:
-        logger.info("--- DB MAINTENANCE ---")
-        logger.info(f"Target Patch: {target_patch}.")
+def purge_old_patches(matches_col, old_ids_col, window):
+    """Delete matches older than the window or not ranked solo.
 
-        try:
-            delete_result = matches_col.delete_many(
-                {"info.gameVersion": {"$not": {"$regex": f"^{target_patch}"}}}
-            )
-
-            if delete_result.deleted_count > 0:
-                logger.info(f"Purged {delete_result.deleted_count} matches from older patches.")
-            else:
-                logger.info("Database is already clean (no old patches found).")
-        except Exception as e:  # noqa: BLE001 - a failed purge must not stop the run
-            logger.error(f"Cleanup Error: {e}")
-    else:
+    Matches that aged out get an id record in old_match_ids first, so a player who was off
+    the ladder while they aged out does not download them again on return. Id records are
+    never deleted: such a player can return patches later, and the records are a few bytes.
+    """
+    if not window:
         logger.warning("Skipping DB cleanup: Could not determine current patch from Riot API.")
+        return
+    logger.info("--- DB MAINTENANCE ---")
+    logger.info(f"Retention window: {', '.join(window)}.")
+    try:
+        doomed = []
+        for d in matches_col.find(
+            {}, {"metadata.matchId": 1, "info.gameVersion": 1, "info.queueId": 1}
+        ):
+            info = d.get("info", {})
+            # Compared in Python: a regex cannot order patches, and "16.2" is a prefix of "16.22".
+            if is_older(get_short_version(info.get("gameVersion")), window):
+                match_id = d.get("metadata", {}).get("matchId")
+                if match_id:
+                    old_ids_col.update_one(
+                        {"_id": match_id}, {"$set": {"seen": window[0]}}, upsert=True
+                    )
+                doomed.append(d["_id"])
+            elif info.get("queueId", RANKED_SOLO_QUEUE) != RANKED_SOLO_QUEUE:
+                doomed.append(d["_id"])
+        matches_col.delete_many({"_id": {"$in": doomed}})
+        logger.info(f"Purged {len(doomed)} matches older than the window or not ranked solo.")
+    except Exception as e:  # noqa: BLE001 - a failed purge must not stop the run
+        logger.error(f"Cleanup Error: {e}")
+
+
+def log_storage_size(matches_col):
+    try:
+        [stats] = matches_col.aggregate([{"$collStats": {"storageStats": {}}}])
+        size_mb = stats["storageStats"]["storageSize"] / 2**20
+        logger.info(f"Matches collection storage: {size_mb:.1f} MB (free tier: 512 MB).")
+    except Exception as e:  # noqa: BLE001 - only a log line
+        logger.warning(f"Could not read the storage size of the matches collection: {e}")
 
 
 # --- 6. CRAWLER ---
-def crawl(watcher, riot_watcher, matches_col, target_patch, player_count):
-    """Download new ranked matches of the top players into matches_col.
+def crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count):
+    """Download new ranked solo matches of the top players into matches_col.
 
+    Each list is scanned newest first and stops at the first match older than the window,
+    whose id is recorded in old_ids_col so it is never downloaded again.
     Return (new matches saved, regions whose scan did not fail). RiotAuthError propagates.
     """
     new_count = 0
     regions_ok = 0
 
+    def record_old(match_id):
+        # seen: the last patch a list returned it, to tell live records from dormant ones.
+        old_ids_col.update_one({"_id": match_id}, {"$set": {"seen": window[0]}}, upsert=True)
+
     for region_code, region_name in REGIONS:
         logger.info(f"=== Scan: {region_name} ({region_code}) ===")
+        counts = Counter(listed=0, stored=0, downloaded=0, too_old=0)
         try:
             # Tiered fallback: Challenger → Grandmaster → Master → Database → Pro Players
             entries = []
@@ -479,53 +551,75 @@ def crawl(watcher, riot_watcher, matches_col, target_patch, player_count):
                         region_code,
                         puuid,
                         count=MATCH_HISTORY_COUNT,
+                        queue=RANKED_SOLO_QUEUE,
                     )
                     if not match_ids:
                         continue
+                    counts["listed"] += len(match_ids)
 
-                    existing_docs = matches_col.find(
-                        {"metadata.matchId": {"$in": match_ids}},
-                        {"metadata.matchId": 1},
-                    )
-                    existing_ids = {doc["metadata"]["matchId"] for doc in existing_docs}
-                    new_matches = [mid for mid in match_ids if mid not in existing_ids]
+                    stored = {
+                        d["metadata"]["matchId"]: get_short_version(
+                            d.get("info", {}).get("gameVersion")
+                        )
+                        for d in matches_col.find(
+                            {"metadata.matchId": {"$in": match_ids}},
+                            {"metadata.matchId": 1, "info.gameVersion": 1},
+                        )
+                    }
+                    known_old = {
+                        d["_id"] for d in old_ids_col.find({"_id": {"$in": match_ids}}, {"_id": 1})
+                    }
 
-                    if not new_matches:
-                        logger.info(f"Player {i + 1}/{player_count}: Up to date.")
-                        continue
+                    for match_id in match_ids:
+                        if match_id in known_old:
+                            record_old(match_id)
+                            break
+                        if match_id in stored:
+                            # Still stored at a patch change: the purge after the crawl deletes it.
+                            if window and is_older(stored[match_id], window):
+                                record_old(match_id)
+                                counts["too_old"] += 1
+                                break
+                            counts["stored"] += 1
+                            continue
 
-                    for match_id in new_matches:
+                        # The old script failed here with a NameError when the patch was
+                        # unknown; kept as an explicit error so no behaviour changes (#2).
+                        if not window:
+                            raise RuntimeError("current patch unknown, not saving matches")
                         match_detail = smart_request(watcher.match.by_id, region_code, match_id)
-                        if match_detail:
-                            # The old script failed here with a NameError when the patch was
-                            # unknown; kept as an explicit error so no behaviour changes (#2).
-                            if target_patch is None:
-                                raise RuntimeError("current patch unknown, not saving matches")
+                        if not match_detail:
+                            continue
+                        match_ver = get_short_version(
+                            match_detail.get("info", {}).get("gameVersion")
+                        )
+                        if is_older(match_ver, window):
+                            record_old(match_id)
+                            counts["too_old"] += 1
+                            break  # the list is newest first: the rest is older still
 
-                            # Skip old-patch matches before inserting, to save write ops.
-                            match_ver = get_short_version(
-                                match_detail.get("info", {}).get("gameVersion")
-                            )
-                            if match_ver != target_patch:
-                                continue  # Skip saving if it's an old patch match
+                        # Store only essential fields to reduce storage usage
+                        slimmed = slim_match(match_detail, region_code)
 
-                            # Store only essential fields to reduce storage usage
-                            slimmed = slim_match(match_detail, region_code)
-
-                            try:
-                                matches_col.insert_one(slimmed)
-                                new_count += 1
-                                logger.info(f"  [+] Saved: {match_id}")
-                            except DuplicateKeyError:
-                                pass  # already saved, e.g. by another player's history
-                            except Exception as e:  # noqa: BLE001 - skip this match, keep crawling
-                                logger.error(f"  Could not save {match_id}: {e}")
+                        try:
+                            matches_col.insert_one(slimmed)
+                            new_count += 1
+                            counts["downloaded"] += 1
+                            logger.info(f"  [+] Saved: {match_id}")
+                        except DuplicateKeyError:
+                            pass  # already saved, e.g. by another player's history
+                        except Exception as e:  # noqa: BLE001 - skip this match, keep crawling
+                            logger.error(f"  Could not save {match_id}: {e}")
 
                     logger.info(f"Player {i + 1}/{player_count} scanned.")
                 except RiotAuthError:
                     raise
                 except Exception as e:  # noqa: BLE001 - one bad player must not stop the crawl
                     logger.error(f"Player error: {e}")
+            logger.info(
+                f"{region_name}: {counts['listed']} listed, {counts['stored']} already stored, "
+                f"{counts['downloaded']} downloaded, {counts['too_old']} recorded as too old."
+            )
             regions_ok += 1
         except RiotAuthError:
             raise
@@ -533,6 +627,55 @@ def crawl(watcher, riot_watcher, matches_col, target_patch, player_count):
             logger.error(f"Region error: {e}")
 
     return new_count, regions_ok
+
+
+def incomplete_matches(docs, window):
+    """(region, matchId) of stored matches inside the window slimmed before gameDuration or
+    queueId was kept."""
+    return [
+        (d["_region"], d["metadata"]["matchId"])
+        for d in docs
+        if not {"gameDuration", "queueId"} <= d.get("info", {}).keys()
+        and not is_older(get_short_version(d.get("info", {}).get("gameVersion")), window)
+    ]
+
+
+def refetch_incomplete(watcher, matches_col, window):
+    """Download incomplete stored matches again and replace them; return the number replaced.
+
+    Each match is tried once; one that cannot be fetched stays as it is. RiotAuthError propagates.
+    """
+    docs = matches_col.find(
+        {
+            "$or": [
+                {"info.gameDuration": {"$exists": False}},
+                {"info.queueId": {"$exists": False}},
+            ]
+        },
+        {
+            "_region": 1,
+            "metadata.matchId": 1,
+            "info.gameVersion": 1,
+            "info.gameDuration": 1,
+            "info.queueId": 1,
+        },
+    )
+    replaced = 0
+    for region_code, match_id in incomplete_matches(docs, window):
+        try:
+            match_detail = smart_request(watcher.match.by_id, region_code, match_id)
+            if not match_detail:
+                continue
+            matches_col.replace_one(
+                {"metadata.matchId": match_id}, slim_match(match_detail, region_code)
+            )
+            replaced += 1
+        except RiotAuthError:
+            raise
+        except Exception as e:  # noqa: BLE001 - keep the old document, try the next match
+            logger.error(f"  Could not download {match_id} again: {e}")
+    logger.info(f"Downloaded {replaced} stored matches again with their newer fields.")
+    return replaced
 
 
 # --- 7. ANALYSIS (pure: stored matches in, data.json structure out) ---
@@ -563,6 +706,9 @@ def summarize_match(m, champ_id_to_name, tank_champs, damage_shares):
         summary["participants"].append(
             {
                 "role": p["teamPosition"],
+                "remake": bool(p.get("gameEndedInEarlySurrender")),
+                "perks": p.get("perks"),
+                "spells": (p.get("summoner1Id"), p.get("summoner2Id")),
                 "name": name,
                 "champ": p["championName"],
                 "win": p["win"],
@@ -580,6 +726,60 @@ def item_shares(counts, games):
     """The 8 items in most games: id, games and share (% of the champion's games)."""
     ranked = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[:8]
     return [{"id": i, "games": n, "share": round(n / games * 100, 1)} for i, n in ranked]
+
+
+RUNE_PAGES = 3
+SPELL_PAIRS = 2
+
+
+def rune_stats(s):
+    """The champion's most frequent rune pages and spell pairs, shares over games with runes."""
+    rg = s["rg"]
+    pages = sorted(s["pages"].items(), key=lambda x: (-x[1][0], x[0]))[:RUNE_PAGES]
+    runes = [
+        {
+            "keystone": key[0],
+            "primary_style": key[1],
+            "secondary_style": key[2],
+            "games": g,
+            "share": round(g / rg * 100, 1),
+            "win_rate": round(w / g * 100, 1),
+        }
+        for key, (g, w) in pages
+    ]
+    if runes:
+        top = (runes[0]["keystone"], runes[0]["primary_style"], runes[0]["secondary_style"])
+        (sel, n), *_ = sorted(s["selections"][top].items(), key=lambda x: (-x[1], x[0]))
+        runes[0]["selection"] = {
+            "primary": list(sel[:3]),
+            "secondary": list(sel[3:5]),
+            "shards": list(sel[5:]),
+            "games": n,
+        }
+    spells = [
+        {"ids": list(pair), "games": g, "share": round(g / rg * 100, 1)}
+        for pair, g in sorted(s["spells"].items(), key=lambda x: (-x[1], x[0]))[:SPELL_PAIRS]
+    ]
+    return {"rune_games": rg, "runes": runes, "spells": spells}
+
+
+def new_champ_stats():
+    return {
+        "g": 0,
+        "w": 0,
+        "k": 0,
+        "d": 0,
+        "a": 0,
+        "b": 0,
+        "ig": 0,  # games that are not remakes: the item denominator
+        "items": Counter(),
+        "boots": Counter(),
+        "context_data": {},
+        "rg": 0,  # games that are not remakes and have rune data
+        "pages": {},  # (keystone, primary style, secondary style) -> [games, wins]
+        "selections": {},  # page -> Counter of (3 primary, 2 secondary, 3 shards)
+        "spells": Counter(),  # sorted spell pair -> games
+    }
 
 
 def aggregate(
@@ -626,17 +826,7 @@ def aggregate(
 
         # --- CHAMPION STATS INITIALIZATION ---
         if c not in stats:
-            stats[c] = {
-                "g": 0,
-                "w": 0,
-                "k": 0,
-                "d": 0,
-                "a": 0,
-                "b": 0,
-                "items": Counter(),
-                "boots": Counter(),
-                "context_data": {},
-            }
+            stats[c] = new_champ_stats()
 
         s = stats[c]
         s["g"] += 1
@@ -645,6 +835,11 @@ def aggregate(
         s["a"] += p["a"]
         if p["win"]:
             s["w"] += 1
+
+        # Remakes count for pick and win rate, but say nothing about builds, runes or spells.
+        if p["remake"]:
+            continue
+        s["ig"] += 1
 
         # --- ITEM BUILD LOGIC ---
         # 1. Filter: Keep only 'Valid' items (Legendaries)
@@ -663,6 +858,19 @@ def aggregate(
             ctx["g"] += 1
             ctx["items"].update(set(valid_player_items))
 
+        # --- RUNES AND SPELLS: only games stored with rune data ---
+        perks = p["perks"]
+        if perks and perks["primary"]:
+            s["rg"] += 1
+            page = (perks["primary"][0], perks["primaryStyle"], perks["subStyle"])
+            pg = s["pages"].setdefault(page, [0, 0])
+            pg[0] += 1
+            pg[1] += bool(p["win"])
+            sel = tuple(perks["primary"][1:] + perks["secondary"] + perks["shards"])
+            s["selections"].setdefault(page, Counter())[sel] += 1
+            if None not in p["spells"]:
+                s["spells"][tuple(sorted(p["spells"]))] += 1
+
     # 2. Count Bans (Global look at the match set)
     for m in match_list:
         for bid in m["bans"]:
@@ -670,17 +878,7 @@ def aggregate(
                 bn = champ_id_to_name[bid]
                 # Init if banned but not played
                 if bn not in stats:
-                    stats[bn] = {
-                        "g": 0,
-                        "w": 0,
-                        "k": 0,
-                        "d": 0,
-                        "a": 0,
-                        "b": 0,
-                        "items": Counter(),
-                        "boots": Counter(),
-                        "context_data": {},
-                    }
+                    stats[bn] = new_champ_stats()
                 stats[bn]["b"] += 1
 
     # 3. Finalize and Format Results
@@ -706,9 +904,11 @@ def aggregate(
                     "win_rate": win_rate,
                     "ban_rate": ban_rate,
                     "kda": kda,
-                    "items": item_shares(s["items"], s["g"]),
-                    "boots": item_shares(s["boots"], s["g"]),
+                    "item_games": s["ig"],
+                    "items": item_shares(s["items"], s["ig"]),
+                    "boots": item_shares(s["boots"], s["ig"]),
                     "matchups": matchup_cards(s),
+                    **rune_stats(s),
                 }
             )
 
@@ -745,9 +945,15 @@ def build_frontend_data(
     last_updated,
     boots=frozenset(),
 ):
-    """Turn all stored matches (any region) into the data.json structure."""
+    """Turn the stored matches of the current patch (any region) into the data.json structure."""
     # Use the patch version we got from Data Dragon API, not from database
     current_patch = get_short_version(ddragon_version) if ddragon_version else "14.1"
+    if ddragon_version:
+        matches = [
+            m
+            for m in matches
+            if get_short_version(m.get("info", {}).get("gameVersion")) == current_patch
+        ]
 
     frontend_data = {
         "meta": {
@@ -879,6 +1085,7 @@ def main():
     api_key = os.getenv("RIOT_API_KEY")
     mongo_uri = os.getenv("MONGODB_URI")
     player_count = int(os.getenv("PLAYER_COUNT", "10"))
+    keep_previous = int(os.getenv("KEEP_PREVIOUS_PATCHES", "2"))
 
     os.makedirs(DATA_FOLDER, exist_ok=True)
 
@@ -889,10 +1096,11 @@ def main():
 
     watcher = LolWatcher(api_key)
     riot_watcher = RiotWatcher(api_key)
-    matches_col = connect_db(mongo_uri)
-    latest_ver, tank_champs, valid_items, boots = load_static_data()
+    matches_col, old_ids_col = connect_db(mongo_uri)
+    latest_ver, tank_champs, valid_items, boots, versions = load_static_data()
 
     target_patch = get_short_version(latest_ver) if latest_ver else None
+    window = retention_window(versions, keep_previous)
 
     # Read before anything is written: an unreadable archive must stop the run, not be replaced.
     try:
@@ -905,8 +1113,11 @@ def main():
     # and the published site keeps its last good data.
     try:
         new_count, regions_ok = crawl(
-            watcher, riot_watcher, matches_col, target_patch, player_count
+            watcher, riot_watcher, matches_col, old_ids_col, window, player_count
         )
+        # The purge after this deletes refreshed matches whose queueId is not 420.
+        if window and regions_ok:
+            refetch_incomplete(watcher, matches_col, window)
     except RiotAuthError as e:
         logger.error(f"{e}. Check the RIOT_API_KEY secret; data.json not written.")
         return 1
@@ -914,7 +1125,8 @@ def main():
         logger.error("Could not read the ladder for any region; data.json not written.")
         return 1
 
-    purge_old_patches(matches_col, target_patch)
+    purge_old_patches(matches_col, old_ids_col, window)
+    log_storage_size(matches_col)
 
     logger.info("Generating Frontend JSON...")
     matches = list(matches_col.find({}))
