@@ -945,9 +945,11 @@ def test_slim_timeline_applies_undo_keeps_sales_and_drops_evolves():
                 {"t": 2000, "e": "sell", "id": 3031},
             ],
             "skills": [{"t": 1000, "slot": 1}],
+            # Every item bought in the first minute, without the undone 3006.
+            "start": [1055, 3031],
         },
         # Matched by puuid: participant 1 of the timeline is pu2; the undone sale is gone.
-        "pu2": {"items": [{"t": 1200, "e": "buy", "id": 3089}], "skills": []},
+        "pu2": {"items": [{"t": 1200, "e": "buy", "id": 3089}], "skills": [], "start": [3089]},
     }
 
 
@@ -971,7 +973,9 @@ def test_crawl_stores_the_slim_timeline_with_the_match():
         {3031},
     )
     [doc] = col.docs
-    assert doc["timeline"] == {"pu1": {"items": [{"t": 5, "e": "buy", "id": 3031}], "skills": []}}
+    assert doc["timeline"] == {
+        "pu1": {"items": [{"t": 5, "e": "buy", "id": 3031}], "skills": [], "start": [3031]}
+    }
 
 
 def test_failed_timeline_leaves_match_stored_and_a_later_run_fetches_it(monkeypatch, tmp_path):
@@ -986,7 +990,7 @@ def test_failed_timeline_leaves_match_stored_and_a_later_run_fetches_it(monkeypa
     calls = []
     code, _, _ = run_main(monkeypatch, tmp_path, fake_watcher(calls=calls), col)
     assert code == 0 and calls == []  # matches not downloaded again, only their timelines
-    assert all(d["timeline"] == {"pu1": {"items": [], "skills": []}} for d in col.docs)
+    assert all(d["timeline"] == {"pu1": {"items": [], "skills": [], "start": []}} for d in col.docs)
 
 
 def test_timeline_not_found_is_marked_and_not_asked_again(monkeypatch, tmp_path):
