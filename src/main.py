@@ -272,28 +272,78 @@ def slim_match(match_detail, region_code):
     }
 
 
-def analyze_enemy_comp(match_info, my_team_id, tank_champs):
-    enemies = [p for p in match_info["participants"] if p["teamId"] != my_team_id]
-    total_phys = sum(p.get("physicalDamageDealtToChampions", 0) for p in enemies)
-    total_magic = sum(p.get("magicDamageDealtToChampions", 0) for p in enemies)
-    total_dmg = (
-        total_phys + total_magic + sum(p.get("trueDamageDealtToChampions", 0) for p in enemies)
-    )
+MIN_SHARE_GAMES = 5
+MATCHUP_MIN_GAMES = 10
+MATCHUP_MIN_DIFF = 20  # percentage points
 
-    if total_dmg == 0:
-        return []
+
+def champion_damage_shares(matches):
+    """Per champion with at least MIN_SHARE_GAMES stored games (any role, any region): its
+    (physical, magic) damage to champions as shares of its total damage to champions."""
+    totals = {}
+    for m in matches:
+        for p in m.get("info", {}).get("participants", []):
+            t = totals.setdefault(p["championName"], [0, 0, 0, 0])
+            phys = p.get("physicalDamageDealtToChampions", 0)
+            magic = p.get("magicDamageDealtToChampions", 0)
+            t[0] += 1
+            t[1] += phys
+            t[2] += magic
+            t[3] += phys + magic + p.get("trueDamageDealtToChampions", 0)
+    return {
+        c: (phys / total, magic / total)
+        for c, (games, phys, magic, total) in totals.items()
+        if games >= MIN_SHARE_GAMES and total > 0
+    }
+
+
+def analyze_enemy_comp(match_info, my_team_id, tank_champs, damage_shares):
+    """Enemy type from the enemy champions, not from the damage they dealt in this game (#22)."""
+    enemies = [p["championName"] for p in match_info["participants"] if p["teamId"] != my_team_id]
+    known = [damage_shares[c] for c in enemies if c in damage_shares]
 
     tags = []
-    if (total_phys / total_dmg) > 0.65:
-        tags.append("Heavy AD")
-    elif (total_magic / total_dmg) > 0.60:
-        tags.append("Heavy AP")
+    if known:
+        phys = sum(s[0] for s in known) / len(known)
+        magic = sum(s[1] for s in known) / len(known)
+        if phys > 0.65:
+            tags.append("Heavy AD")
+        elif magic > 0.60:
+            tags.append("Heavy AP")
 
-    tank_count = sum(1 for p in enemies if p["championName"] in tank_champs)
-    if tank_count >= 2:
+    if sum(1 for c in enemies if c in tank_champs) >= 2:
         tags.append("Tank Heavy")
 
     return tags
+
+
+def matchup_cards(s):
+    """Per enemy type: the items (boots included) whose share against that type differs by at
+    least MATCHUP_MIN_DIFF points from their share in the champion's other games."""
+    all_items = s["items"] + s["boots"]
+    cards = {}
+    for tag, ctx in s["context_data"].items():
+        games, other = ctx["g"], s["g"] - ctx["g"]
+        if games < MATCHUP_MIN_GAMES or other < MATCHUP_MIN_GAMES:
+            continue
+        rows = []
+        for i, total in all_items.items():
+            n, o = ctx["items"][i], total - ctx["items"][i]
+            # Integer form of |n/games - o/other| * 100 >= MATCHUP_MIN_DIFF, exact at the edge.
+            if abs(n * other - o * games) * 100 >= MATCHUP_MIN_DIFF * games * other:
+                rows.append(
+                    {
+                        "id": i,
+                        "games": n,
+                        "share": round(n / games * 100, 1),
+                        "other_games": o,
+                        "other_share": round(o / other * 100, 1),
+                    }
+                )
+        rows.sort(key=lambda r: (-abs(r["share"] - r["other_share"]), r["id"]))
+        if rows:
+            cards[tag] = {"games": games, "other_games": other, "items": rows}
+    return cards
 
 
 # --- 5. DB MAINTENANCE ---
@@ -486,15 +536,15 @@ def crawl(watcher, riot_watcher, matches_col, target_patch, player_count):
 
 
 # --- 7. ANALYSIS (pure: stored matches in, data.json structure out) ---
-def summarize_match(m, champ_id_to_name, tank_champs):
+def summarize_match(m, champ_id_to_name, tank_champs, damage_shares):
     """Reduce a stored match to what aggregate() needs; records champion names seen."""
     info = m.get("info", {})
     version = get_short_version(info.get("gameVersion", ""))
     bans = extract_bans(info)
 
     context_map = {
-        100: analyze_enemy_comp(info, 100, tank_champs),
-        200: analyze_enemy_comp(info, 200, tank_champs),
+        100: analyze_enemy_comp(info, 100, tank_champs, damage_shares),
+        200: analyze_enemy_comp(info, 200, tank_champs, damage_shares),
     }
 
     summary = {"patch": version, "bans": bans, "participants": []}
@@ -607,15 +657,11 @@ def aggregate(
         for i in set(valid_player_items):
             s["boots" if i in boots else "items"][i] += 1
 
-        # --- CONTEXT LOGIC (Optional: Gather context stats) ---
+        # --- ENEMY TYPE: games and item counts against each type ---
         for tag in p["context"]:
-            if tag not in s["context_data"]:
-                s["context_data"][tag] = {"g": 0, "builds": []}
-
-            ctx = s["context_data"][tag]
+            ctx = s["context_data"].setdefault(tag, {"g": 0, "items": Counter()})
             ctx["g"] += 1
-            if len(valid_player_items) >= 2:
-                ctx["builds"].append(tuple(sorted(valid_player_items[:3])))
+            ctx["items"].update(set(valid_player_items))
 
     # 2. Count Bans (Global look at the match set)
     for m in match_list:
@@ -650,22 +696,6 @@ def aggregate(
         win_rate = round((s["w"] / s["g"]) * 100, 1) if s["g"] > 0 else 0
         kda = round((s["k"] + s["a"]) / (s["d"] if s["d"] > 0 else 1), 2)
 
-        # --- CALCULATE CONTEXT BUILDS ---
-        context_builds = {}
-        for tag, ctx_data in s.get("context_data", {}).items():
-            if ctx_data["g"] >= 3:  # Minimum sample size filter
-                ctx_top_items = []
-                if ctx_data["builds"]:
-                    ctx_common = Counter(ctx_data["builds"]).most_common(1)
-                    if ctx_common:
-                        ctx_top_items = list(ctx_common[0][0])
-
-                if ctx_top_items:
-                    context_builds[tag] = {
-                        "games": ctx_data["g"],
-                        "items": ctx_top_items,
-                    }
-
         # Only include relevant champions
         if s["g"] > 0 or ban_rate > 1.0:
             results.append(
@@ -678,7 +708,7 @@ def aggregate(
                     "kda": kda,
                     "items": item_shares(s["items"], s["g"]),
                     "boots": item_shares(s["boots"], s["g"]),
-                    "context_builds": context_builds,
+                    "matchups": matchup_cards(s),
                 }
             )
 
@@ -735,10 +765,11 @@ def build_frontend_data(
     # seen so far, and a player's leaderboard region is the first one they were seen in.
     champ_id_to_name = {}
     player_performance = {}
+    damage_shares = champion_damage_shares(matches)
 
     for region_code, _ in REGIONS:
         region_matches = [
-            summarize_match(m, champ_id_to_name, tank_champs)
+            summarize_match(m, champ_id_to_name, tank_champs, damage_shares)
             for m in matches
             if m.get("_region") == region_code
         ]
@@ -769,7 +800,7 @@ def patch_regions(matches, patch):
         region_matches = [
             s
             for s in (
-                summarize_match(m, champ_id_to_name, set())
+                summarize_match(m, champ_id_to_name, set(), {})
                 for m in matches
                 if m.get("_region") == region_code
             )

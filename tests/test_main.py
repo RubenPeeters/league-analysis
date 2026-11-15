@@ -12,6 +12,7 @@ from main import (
     aggregate,
     analyze_enemy_comp,
     build_frontend_data,
+    champion_damage_shares,
     extract_bans,
     get_short_version,
     select_items,
@@ -119,30 +120,55 @@ def test_slim_match_keeps_only_analysis_fields():
     assert p["riotIdGameName"] is None
 
 
-def enemies(dmg_each, champs=("A", "B")):
+def champ_games(champ, dmg, n):
+    """n stored games of champ dealing dmg (physical, magic, true) to champions."""
+    return [match([player(1, champ, 100, "TOP", dmg=dmg)]) for _ in range(n)]
+
+
+def test_champion_damage_share_sums_damage_over_games():
+    games = champ_games("Ahri", (10, 80, 10), 3) + champ_games("Ahri", (40, 50, 10), 2)
+    games.append(match([player(1, "Ahri", 100, "MIDDLE", dmg=(0, 0, 0))], region="kr"))
+    phys, magic = champion_damage_shares(games)["Ahri"]
+    assert round(phys, 4) == round(110 / 500, 4)
+    assert round(magic, 4) == round(340 / 500, 4)
+
+
+def test_champion_with_fewer_than_five_games_has_no_share():
+    assert champion_damage_shares(champ_games("Ahri", (0, 100, 0), 4)) == {}
+    assert "Ahri" in champion_damage_shares(champ_games("Ahri", (0, 100, 0), 5))
+
+
+def enemies(champs):
     return {
-        "participants": [player(1, "Me", 100, "TOP", dmg=(999, 999, 999))]
-        + [player(i, c, 200, "TOP", dmg=dmg_each) for i, c in enumerate(champs)]
+        "participants": [player(1, "Me", 100, "TOP")]
+        + [player(i, c, 200, "TOP") for i, c in enumerate(champs)]
     }
 
 
-def test_analyze_enemy_comp_heavy_ad():
-    assert analyze_enemy_comp(enemies((70, 20, 10)), 100, set()) == ["Heavy AD"]
+SHARES = {"Darius": (0.9, 0.05), "Jinx": (0.7, 0.1), "Lux": (0.1, 0.85), "Ahri": (0.2, 0.7)}
 
 
-def test_analyze_enemy_comp_heavy_ap():
-    assert analyze_enemy_comp(enemies((20, 70, 10)), 100, set()) == ["Heavy AP"]
+def test_team_type_is_the_mean_over_known_champions():
+    assert analyze_enemy_comp(enemies(["Darius", "Jinx"]), 100, set(), SHARES) == ["Heavy AD"]
+    assert analyze_enemy_comp(enemies(["Lux", "Ahri"]), 100, set(), SHARES) == ["Heavy AP"]
+    # mean physical (0.9 + 0.1) / 2 = 0.5, mean magic 0.45: neither
+    assert analyze_enemy_comp(enemies(["Darius", "Lux"]), 100, set(), SHARES) == []
+    # a champion without a share is left out of the mean, not counted as 0
+    assert analyze_enemy_comp(enemies(["Darius", "Zoe"]), 100, set(), SHARES) == ["Heavy AD"]
+    assert analyze_enemy_comp(enemies(["Zoe"]), 100, set(), SHARES) == []
 
 
-def test_analyze_enemy_comp_tank_heavy():
-    info = enemies((50, 50, 0), champs=("Malphite", "Ornn", "Lux"))
-    assert analyze_enemy_comp(info, 100, {"Malphite", "Ornn"}) == ["Tank Heavy"]
-    assert analyze_enemy_comp(info, 100, {"Malphite"}) == []
+def test_team_type_ignores_damage_dealt_in_the_game():
+    info = enemies(["Lux", "Ahri"])
+    for p in info["participants"][1:]:
+        p["physicalDamageDealtToChampions"] = 10_000
+    assert analyze_enemy_comp(info, 100, set(), SHARES) == ["Heavy AP"]
 
 
-def test_analyze_enemy_comp_zero_damage():
-    info = enemies((0, 0, 0), champs=("Ornn", "Sion"))
-    assert analyze_enemy_comp(info, 100, {"Ornn", "Sion"}) == []
+def test_team_type_tank_heavy():
+    info = enemies(["Malphite", "Ornn", "Lux"])
+    assert analyze_enemy_comp(info, 100, {"Malphite", "Ornn"}, {}) == ["Tank Heavy"]
+    assert analyze_enemy_comp(info, 100, {"Malphite"}, {}) == []
 
 
 def test_pick_ban_and_win_rate():
@@ -264,26 +290,51 @@ def test_no_item_data_means_no_item_filtering():
     assert [i["id"] for i in garen["items"]] == [1001, 1002]
 
 
-def ad_game(items):
-    """Garen top against an enemy team doing only physical damage."""
-    return match(
-        [
-            player(1, "Garen", 100, "TOP", items=items),
-            player(2, "Darius", 200, "JUNGLE", dmg=(100, 0, 0)),
-        ]
+def garen_game(items, enemy):
+    """Garen top against one enemy champion; Darius has a physical share of 1, Lux of 0."""
+    return match([player(1, "Garen", 100, "TOP", items=items), player(2, enemy, 200, "MIDDLE")])
+
+
+def matchups(ad_games, other_games, boots=frozenset()):
+    """Garen's matchup cards; ad_games and other_games are item lists, one per game."""
+    damage = [
+        match([player(2, c, 200, "MIDDLE", dmg=d)])
+        for c, d in [("Darius", (1, 0, 0)), ("Lux", (0, 1, 0))]
+    ] * 5
+    matches = (
+        damage
+        + [garen_game(i, "Darius") for i in ad_games]
+        + [garen_game(i, "Lux") for i in other_games]
     )
+    data = build(matches, valid_items=LEGENDARY | boots, boots=boots)
+    return by_name(data["regions"]["euw1"]["TOP"])["Garen"]["matchups"]
 
 
-def test_context_build_below_three_games_is_left_out():
-    two = [ad_game([3001, 3002]), ad_game([3001, 3002])]
-    garen = by_name(build(two, valid_items=LEGENDARY)["regions"]["euw1"]["TOP"])["Garen"]
-    assert garen["context_builds"] == {}
+def test_matchup_card_lists_items_differing_by_twenty_points():
+    # vs Heavy AD: 3001 in 8/10 (80%), others 3/10 (30%); 3002 in 5/10 vs 3/10 (20 points,
+    # included); 3003 in 4/10 vs 3/10 (10 points, left out); boots 3020 in 0/10 vs 10/10.
+    ad = [[3001, 3002, 3003]] * 3 + [[3001, 3002, 3003]] + [[3001, 3002]] + [[3001]] * 3 + [[]] * 2
+    other = [[3001, 3002, 3003, 3020]] * 3 + [[3020]] * 7
+    card = matchups(ad, other, boots={3020})["Heavy AD"]
+    assert card == {
+        "games": 10,
+        "other_games": 10,
+        "items": [
+            {"id": 3020, "games": 0, "share": 0.0, "other_games": 10, "other_share": 100.0},
+            {"id": 3001, "games": 8, "share": 80.0, "other_games": 3, "other_share": 30.0},
+            {"id": 3002, "games": 5, "share": 50.0, "other_games": 3, "other_share": 30.0},
+        ],
+    }
 
 
-def test_context_build_at_three_games_is_included():
-    three = [ad_game([3001, 3002]), ad_game([3001, 3002]), ad_game([3003, 3004])]
-    garen = by_name(build(three, valid_items=LEGENDARY)["regions"]["euw1"]["TOP"])["Garen"]
-    assert garen["context_builds"] == {"Heavy AD": {"games": 3, "items": [3001, 3002]}}
+def test_matchup_card_needs_ten_games_on_both_sides():
+    assert "Heavy AD" in matchups([[3001]] * 10, [[]] * 10)
+    assert matchups([[3001]] * 9, [[]] * 10) == {}
+    assert matchups([[3001]] * 10, [[]] * 9) == {}
+
+
+def test_champion_with_no_card_when_no_item_differs():
+    assert matchups([[3001]] * 10, [[3001]] * 9 + [[]]) == {}
 
 
 def test_leaderboard_keys_are_role_and_champion():
