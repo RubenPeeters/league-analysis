@@ -2,9 +2,11 @@ import json
 import logging
 import os
 import sys
+import threading
 import time
 from collections import Counter
 from datetime import datetime, timezone
+from statistics import median
 
 import requests
 from dotenv import load_dotenv
@@ -189,8 +191,13 @@ class RiotAuthError(Exception):
     """The Riot API rejected the key (401/403); no later call can succeed."""
 
 
+# Riot requests made by the current thread; each region's crawl runs in its own thread.
+_riot_requests = threading.local()
+
+
 def smart_request(func, *args, **kwargs):
     while True:
+        _riot_requests.count = getattr(_riot_requests, "count", 0) + 1
         try:
             return func(*args, **kwargs)
         except ApiError as e:
@@ -314,6 +321,58 @@ def slim_match(match_detail, region_code):
     }
 
 
+def slim_timeline(timeline, puuids, valid_items):
+    """Per puuid of the match: its item events (valid_items only; all items when None) and
+    normal skill level-ups, each with its timestamp in ms.
+
+    Timeline participants are matched by puuid, not by position. An ITEM_UNDO removes the
+    last purchase (or sale) it reverts, so an undone purchase does not appear.
+    """
+    by_id = {
+        tp["participantId"]: tp["puuid"]
+        for tp in timeline.get("info", {}).get("participants", [])
+        if tp.get("puuid") in puuids
+    }
+    slim = {puuid: {"items": [], "skills": []} for puuid in by_id.values()}
+    for frame in timeline.get("info", {}).get("frames", []):
+        for e in frame.get("events", []):
+            puuid = by_id.get(e.get("participantId"))
+            if puuid is None:
+                continue
+            kind, t = e.get("type"), e.get("timestamp")
+            items = slim[puuid]["items"]
+            if kind in ("ITEM_PURCHASED", "ITEM_SOLD"):
+                if valid_items is None or e.get("itemId") in valid_items:
+                    items.append(
+                        {
+                            "t": t,
+                            "e": "buy" if kind == "ITEM_PURCHASED" else "sell",
+                            "id": e.get("itemId"),
+                        }
+                    )
+            elif kind == "ITEM_UNDO":
+                # Undoing a purchase has beforeId = the item, an undone sale has afterId.
+                undone = (
+                    ("buy", e.get("beforeId")) if e.get("beforeId") else ("sell", e.get("afterId"))
+                )
+                for i in range(len(items) - 1, -1, -1):
+                    if (items[i]["e"], items[i]["id"]) == undone:
+                        del items[i]
+                        break
+            elif kind == "SKILL_LEVEL_UP" and e.get("levelUpType") == "NORMAL":
+                slim[puuid]["skills"].append({"t": t, "slot": e.get("skillSlot")})
+    return slim
+
+
+def fetch_timeline(watcher, region_code, match_id, puuids, valid_items):
+    """The slim timeline of a match, or None when Riot reports it not found.
+
+    Any other failure raises, RiotAuthError included.
+    """
+    timeline = smart_request(watcher.match.timeline_by_match, region_code, match_id)
+    return None if timeline is None else slim_timeline(timeline, puuids, valid_items)
+
+
 MIN_SHARE_GAMES = 5
 MATCHUP_MIN_GAMES = 10
 MATCHUP_MIN_DIFF = 20  # percentage points
@@ -433,200 +492,246 @@ def log_storage_size(matches_col):
 
 
 # --- 6. CRAWLER ---
-def crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count):
-    """Download new ranked solo matches of the top players into matches_col.
+def crawl_region(
+    watcher,
+    riot_watcher,
+    matches_col,
+    old_ids_col,
+    window,
+    player_count,
+    region_code,
+    region_name,
+    valid_items=None,
+):
+    """Download new ranked solo matches of one region's top players into matches_col.
 
     Each list is scanned newest first and stops at the first match older than the window,
     whose id is recorded in old_ids_col so it is never downloaded again.
-    Return (new matches saved, regions whose scan did not fail). RiotAuthError propagates.
+    Return the Counter of matches listed, stored, downloaded and too old, and of timelines
+    fetched. Errors propagate.
     """
-    new_count = 0
-    regions_ok = 0
 
     def record_old(match_id):
         # seen: the last patch a list returned it, to tell live records from dormant ones.
         old_ids_col.update_one({"_id": match_id}, {"$set": {"seen": window[0]}}, upsert=True)
 
-    for region_code, region_name in REGIONS:
-        logger.info(f"=== Scan: {region_name} ({region_code}) ===")
-        counts = Counter(listed=0, stored=0, downloaded=0, too_old=0)
-        try:
-            # Tiered fallback: Challenger → Grandmaster → Master → Database → Pro Players
-            entries = []
+    logger.info(f"=== Scan: {region_name} ({region_code}) ===")
+    counts = Counter(listed=0, stored=0, downloaded=0, too_old=0, timelines=0)
+    # Tiered fallback: Challenger → Grandmaster → Master → Database → Pro Players
+    entries = []
 
-            # Try Challenger
-            challenger = smart_request(
-                watcher.league.challenger_by_queue, region_code, "RANKED_SOLO_5x5"
-            )
-            if challenger and "entries" in challenger:
-                entries = challenger["entries"]  # type: ignore
-                logger.info(f"Found {len(entries)} Challenger players")
+    # Try Challenger
+    challenger = smart_request(watcher.league.challenger_by_queue, region_code, "RANKED_SOLO_5x5")
+    if challenger and "entries" in challenger:
+        entries = challenger["entries"]  # type: ignore
+        logger.info(f"Found {len(entries)} Challenger players")
 
-            # If not enough, try Grandmaster
-            if len(entries) < player_count:
-                logger.info("Not enough Challenger players, trying Grandmaster...")
-                grandmaster = smart_request(
-                    watcher.league.grandmaster_by_queue, region_code, "RANKED_SOLO_5x5"
-                )
-                if grandmaster and "entries" in grandmaster:
-                    entries.extend(grandmaster["entries"])  # type: ignore
-                    logger.info(f"Added {len(grandmaster['entries'])} Grandmaster players")  # type: ignore
+    # If not enough, try Grandmaster
+    if len(entries) < player_count:
+        logger.info("Not enough Challenger players, trying Grandmaster...")
+        grandmaster = smart_request(
+            watcher.league.grandmaster_by_queue, region_code, "RANKED_SOLO_5x5"
+        )
+        if grandmaster and "entries" in grandmaster:
+            entries.extend(grandmaster["entries"])  # type: ignore
+            logger.info(f"Added {len(grandmaster['entries'])} Grandmaster players")  # type: ignore
 
-            # If still not enough, try Master
-            if len(entries) < player_count:
-                logger.info("Not enough GM players, trying Master...")
-                master = smart_request(
-                    watcher.league.masters_by_queue, region_code, "RANKED_SOLO_5x5"
-                )
-                if master and "entries" in master:
-                    entries.extend(master["entries"])  # type: ignore
-                    logger.info(f"Added {len(master['entries'])} Master players")  # type: ignore
+    # If still not enough, try Master
+    if len(entries) < player_count:
+        logger.info("Not enough GM players, trying Master...")
+        master = smart_request(watcher.league.masters_by_queue, region_code, "RANKED_SOLO_5x5")
+        if master and "entries" in master:
+            entries.extend(master["entries"])  # type: ignore
+            logger.info(f"Added {len(master['entries'])} Master players")  # type: ignore
 
-            # If STILL not enough (early season reset), use database + pro players
-            if len(entries) < player_count:
-                logger.info(
-                    f"Only {len(entries)} ranked players found. "
-                    "Using database + pro player fallback..."
-                )
+    # If STILL not enough (early season reset), use database + pro players
+    if len(entries) < player_count:
+        logger.info(
+            f"Only {len(entries)} ranked players found. Using database + pro player fallback..."
+        )
 
-                # Strategy 1: Get PUUIDs from recent matches in database
-                pipeline = [
-                    {"$match": {"_region": region_code}},
-                    {"$sort": {"info.gameCreation": -1}},
-                    {"$limit": 500},
-                    {"$unwind": "$info.participants"},
-                    {"$group": {"_id": "$info.participants.puuid"}},
-                    {"$limit": player_count},
-                ]
-                fallback_puuids = [doc["_id"] for doc in matches_col.aggregate(pipeline)]
-                logger.info(f"Found {len(fallback_puuids)} players from database")
+        # Strategy 1: Get PUUIDs from recent matches in database
+        pipeline = [
+            {"$match": {"_region": region_code}},
+            {"$sort": {"info.gameCreation": -1}},
+            {"$limit": 500},
+            {"$unwind": "$info.participants"},
+            {"$group": {"_id": "$info.participants.puuid"}},
+            {"$limit": player_count},
+        ]
+        fallback_puuids = [doc["_id"] for doc in matches_col.aggregate(pipeline)]
+        logger.info(f"Found {len(fallback_puuids)} players from database")
 
-                # Strategy 2: If database is also empty, use hardcoded pro players
-                if len(fallback_puuids) < player_count and region_code in FALLBACK_PRO_PLAYERS:
-                    logger.info("Database empty. Looking up pro player PUUIDs from Riot API...")
-                    pro_names = FALLBACK_PRO_PLAYERS[region_code][:player_count]
+        # Strategy 2: If database is also empty, use hardcoded pro players
+        if len(fallback_puuids) < player_count and region_code in FALLBACK_PRO_PLAYERS:
+            logger.info("Database empty. Looking up pro player PUUIDs from Riot API...")
+            pro_names = FALLBACK_PRO_PLAYERS[region_code][:player_count]
 
-                    for riot_id in pro_names:
-                        try:
-                            if "#" not in riot_id:
-                                continue
-                            game_name, tag_line = riot_id.split("#", 1)
-
-                            routing = "asia" if region_code == "kr" else "europe"
-                            account = smart_request(
-                                riot_watcher.account.by_riot_id, routing, game_name, tag_line
-                            )
-                            if account and "puuid" in account:  # type: ignore
-                                fallback_puuids.append(account["puuid"])  # type: ignore
-                                logger.info(f"  Found: {riot_id}")
-                        except RiotAuthError:
-                            raise
-                        except Exception as e:  # noqa: BLE001 - skip this pro, try the next
-                            logger.warning(f"  Could not find {riot_id}: {e}")
-                            continue
-
-                # Add fallback PUUIDs as entries
-                entries.extend([{"puuid": puuid} for puuid in fallback_puuids[:player_count]])
-
-            # Sort by LP and take top player_count
-            entries = sorted(entries, key=lambda x: x.get("leaguePoints", 0), reverse=True)[
-                :player_count
-            ]
-
-            logger.info(f"Tracking {len(entries)} players total")
-
-            for i, entry in enumerate(entries):
+            for riot_id in pro_names:
                 try:
-                    if "puuid" in entry:
-                        puuid = entry["puuid"]
-                    elif "summonerId" in entry:
-                        puuid = smart_request(
-                            watcher.summoner.by_id, region_code, entry["summonerId"]
-                        )["puuid"]
-                    else:
+                    if "#" not in riot_id:
                         continue
+                    game_name, tag_line = riot_id.split("#", 1)
 
-                    match_ids = smart_request(
-                        watcher.match.matchlist_by_puuid,
-                        region_code,
-                        puuid,
-                        count=MATCH_HISTORY_COUNT,
-                        queue=RANKED_SOLO_QUEUE,
+                    routing = "asia" if region_code == "kr" else "europe"
+                    account = smart_request(
+                        riot_watcher.account.by_riot_id, routing, game_name, tag_line
                     )
-                    if not match_ids:
-                        continue
-                    counts["listed"] += len(match_ids)
-
-                    stored = {
-                        d["metadata"]["matchId"]: get_short_version(
-                            d.get("info", {}).get("gameVersion")
-                        )
-                        for d in matches_col.find(
-                            {"metadata.matchId": {"$in": match_ids}},
-                            {"metadata.matchId": 1, "info.gameVersion": 1},
-                        )
-                    }
-                    known_old = {
-                        d["_id"] for d in old_ids_col.find({"_id": {"$in": match_ids}}, {"_id": 1})
-                    }
-
-                    for match_id in match_ids:
-                        if match_id in known_old:
-                            record_old(match_id)
-                            break
-                        if match_id in stored:
-                            # Still stored at a patch change: the purge after the crawl deletes it.
-                            if window and is_older(stored[match_id], window):
-                                record_old(match_id)
-                                counts["too_old"] += 1
-                                break
-                            counts["stored"] += 1
-                            continue
-
-                        # The old script failed here with a NameError when the patch was
-                        # unknown; kept as an explicit error so no behaviour changes (#2).
-                        if not window:
-                            raise RuntimeError("current patch unknown, not saving matches")
-                        match_detail = smart_request(watcher.match.by_id, region_code, match_id)
-                        if not match_detail:
-                            continue
-                        match_ver = get_short_version(
-                            match_detail.get("info", {}).get("gameVersion")
-                        )
-                        if is_older(match_ver, window):
-                            record_old(match_id)
-                            counts["too_old"] += 1
-                            break  # the list is newest first: the rest is older still
-
-                        # Store only essential fields to reduce storage usage
-                        slimmed = slim_match(match_detail, region_code)
-
-                        try:
-                            matches_col.insert_one(slimmed)
-                            new_count += 1
-                            counts["downloaded"] += 1
-                            logger.info(f"  [+] Saved: {match_id}")
-                        except DuplicateKeyError:
-                            pass  # already saved, e.g. by another player's history
-                        except Exception as e:  # noqa: BLE001 - skip this match, keep crawling
-                            logger.error(f"  Could not save {match_id}: {e}")
-
-                    logger.info(f"Player {i + 1}/{player_count} scanned.")
+                    if account and "puuid" in account:  # type: ignore
+                        fallback_puuids.append(account["puuid"])  # type: ignore
+                        logger.info(f"  Found: {riot_id}")
                 except RiotAuthError:
                     raise
-                except Exception as e:  # noqa: BLE001 - one bad player must not stop the crawl
-                    logger.error(f"Player error: {e}")
-            logger.info(
-                f"{region_name}: {counts['listed']} listed, {counts['stored']} already stored, "
-                f"{counts['downloaded']} downloaded, {counts['too_old']} recorded as too old."
+                except Exception as e:  # noqa: BLE001 - skip this pro, try the next
+                    logger.warning(f"  Could not find {riot_id}: {e}")
+                    continue
+
+        # Add fallback PUUIDs as entries
+        entries.extend([{"puuid": puuid} for puuid in fallback_puuids[:player_count]])
+
+    # Sort by LP and take top player_count
+    entries = sorted(entries, key=lambda x: x.get("leaguePoints", 0), reverse=True)[:player_count]
+
+    logger.info(f"Tracking {len(entries)} players total")
+
+    for i, entry in enumerate(entries):
+        try:
+            if "puuid" in entry:
+                puuid = entry["puuid"]
+            elif "summonerId" in entry:
+                puuid = smart_request(watcher.summoner.by_id, region_code, entry["summonerId"])[
+                    "puuid"
+                ]
+            else:
+                continue
+
+            match_ids = smart_request(
+                watcher.match.matchlist_by_puuid,
+                region_code,
+                puuid,
+                count=MATCH_HISTORY_COUNT,
+                queue=RANKED_SOLO_QUEUE,
             )
-            regions_ok += 1
+            if not match_ids:
+                continue
+            counts["listed"] += len(match_ids)
+
+            stored = {
+                d["metadata"]["matchId"]: get_short_version(d.get("info", {}).get("gameVersion"))
+                for d in matches_col.find(
+                    {"metadata.matchId": {"$in": match_ids}},
+                    {"metadata.matchId": 1, "info.gameVersion": 1},
+                )
+            }
+            known_old = {
+                d["_id"] for d in old_ids_col.find({"_id": {"$in": match_ids}}, {"_id": 1})
+            }
+
+            for match_id in match_ids:
+                if match_id in known_old:
+                    record_old(match_id)
+                    break
+                if match_id in stored:
+                    # Still stored at a patch change: the purge after the crawl deletes it.
+                    if window and is_older(stored[match_id], window):
+                        record_old(match_id)
+                        counts["too_old"] += 1
+                        break
+                    counts["stored"] += 1
+                    continue
+
+                # The old script failed here with a NameError when the patch was
+                # unknown; kept as an explicit error so no behaviour changes (#2).
+                if not window:
+                    raise RuntimeError("current patch unknown, not saving matches")
+                match_detail = smart_request(watcher.match.by_id, region_code, match_id)
+                if not match_detail:
+                    continue
+                match_ver = get_short_version(match_detail.get("info", {}).get("gameVersion"))
+                if is_older(match_ver, window):
+                    record_old(match_id)
+                    counts["too_old"] += 1
+                    break  # the list is newest first: the rest is older still
+
+                # Store only essential fields to reduce storage usage
+                slimmed = slim_match(match_detail, region_code)
+                try:
+                    puuids = {p["puuid"] for p in slimmed["info"]["participants"]}
+                    slimmed["timeline"] = fetch_timeline(
+                        watcher, region_code, match_id, puuids, valid_items
+                    )
+                    counts["timelines"] += slimmed["timeline"] is not None
+                except RiotAuthError:
+                    raise
+                except Exception as e:  # noqa: BLE001 - store the match, a later run retries
+                    logger.warning(f"  No timeline for {match_id}: {e}")
+
+                try:
+                    matches_col.insert_one(slimmed)
+                    counts["downloaded"] += 1
+                    logger.info(f"  [+] Saved: {match_id}")
+                except DuplicateKeyError:
+                    pass  # already saved, e.g. by another player's history
+                except Exception as e:  # noqa: BLE001 - skip this match, keep crawling
+                    logger.error(f"  Could not save {match_id}: {e}")
+
+            logger.info(f"Player {i + 1}/{player_count} scanned.")
         except RiotAuthError:
             raise
+        except Exception as e:  # noqa: BLE001 - one bad player must not stop the crawl
+            logger.error(f"Player error: {e}")
+    logger.info(
+        f"{region_name}: {counts['listed']} listed, {counts['stored']} already stored, "
+        f"{counts['downloaded']} downloaded, {counts['too_old']} recorded as too old, "
+        f"{counts['timelines']} timelines fetched."
+    )
+    return counts
+
+
+def crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count, valid_items=None):
+    """Scan every region in REGIONS at the same time, one thread per region.
+
+    Riot rate-limits per routing host, so the regions do not slow each other down.
+    Return {region_code: {"ok", "downloaded", "requests", "seconds"}}. A RiotAuthError in any
+    region is raised once every region has finished; any other region failure is only logged.
+    """
+    results = {}
+
+    def scan(region_code, region_name):
+        _riot_requests.count = 0
+        start = time.monotonic()
+        result = {"ok": False, "downloaded": 0}
+        try:
+            counts = crawl_region(
+                watcher,
+                riot_watcher,
+                matches_col,
+                old_ids_col,
+                window,
+                player_count,
+                region_code,
+                region_name,
+                valid_items,
+            )
+            result.update(ok=True, downloaded=counts["downloaded"])
+        except RiotAuthError as e:
+            result["auth_error"] = e
         except Exception as e:  # noqa: BLE001 - one bad region must not stop the crawl
             logger.error(f"Region error: {e}")
+        result.update(requests=_riot_requests.count, seconds=time.monotonic() - start)
+        results[region_code] = result
 
-    return new_count, regions_ok
+    # shortcut: the threads share riotwatcher's requests.Session, which works for plain GETs
+    # but is not documented as thread-safe; give each region its own watcher if that bites.
+    threads = [threading.Thread(target=scan, args=r, name=r[0]) for r in REGIONS]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    for r in results.values():
+        if "auth_error" in r:
+            raise r["auth_error"]
+    return results
 
 
 def incomplete_matches(docs, window):
@@ -678,6 +783,38 @@ def refetch_incomplete(watcher, matches_col, window):
     return replaced
 
 
+def fetch_missing_timelines(watcher, matches_col, patch, valid_items):
+    """Fetch the timeline of stored matches of patch that have none; return the number fetched.
+
+    A match without a "timeline" field was never fetched; None marks one Riot reported not
+    found, which is not asked for again. A match whose request fails stays without one.
+    RiotAuthError propagates.
+    """
+    docs = matches_col.find(
+        {"timeline": {"$exists": False}},
+        {"_region": 1, "metadata.matchId": 1, "info.gameVersion": 1, "info.participants.puuid": 1},
+    )
+    missing = [d for d in docs if get_short_version(d.get("info", {}).get("gameVersion")) == patch]
+    fetched = failed = 0
+    for d in missing:
+        match_id = d["metadata"]["matchId"]
+        try:
+            puuids = {p.get("puuid") for p in d["info"].get("participants", [])}
+            timeline = fetch_timeline(watcher, d["_region"], match_id, puuids, valid_items)
+            matches_col.update_one({"metadata.matchId": match_id}, {"$set": {"timeline": timeline}})
+            fetched += timeline is not None
+        except RiotAuthError:
+            raise
+        except Exception as e:  # noqa: BLE001 - leave it for a later run, try the next match
+            failed += 1
+            logger.error(f"  Could not fetch the timeline of {match_id}: {e}")
+    logger.info(
+        f"Fetched {fetched} timelines of stored matches; {failed} matches of patch {patch} "
+        "still without a timeline."
+    )
+    return fetched
+
+
 # --- 7. ANALYSIS (pure: stored matches in, data.json structure out) ---
 def summarize_match(m, champ_id_to_name, tank_champs, damage_shares):
     """Reduce a stored match to what aggregate() needs; records champion names seen."""
@@ -691,6 +828,8 @@ def summarize_match(m, champ_id_to_name, tank_champs, damage_shares):
     }
 
     summary = {"patch": version, "bans": bans, "participants": []}
+    # None or missing: no timeline stored for the match.
+    timeline = m.get("timeline") or {}
 
     for p in info.get("participants", []):
         champ_id_to_name[p["championId"]] = p["championName"]
@@ -717,6 +856,7 @@ def summarize_match(m, champ_id_to_name, tank_champs, damage_shares):
                 "a": p["assists"],
                 "items": items,
                 "context": my_context,
+                "timeline": timeline.get(p.get("puuid")),
             }
         )
     return summary
@@ -763,6 +903,76 @@ def rune_stats(s):
     return {"rune_games": rg, "runes": runes, "spells": spells}
 
 
+ORDER_LENGTH = 3
+ITEM_PATHS = 3
+SKILL_KEYS = {1: "Q", 2: "W", 3: "E", 4: "R"}
+MAX_RANK = 5
+
+
+def timeline_orders(tl, valid_items, boots):
+    """From one participant's slim timeline: (finished non-boot items in order of first
+    purchase, (first boots, finished items bought before them) or None, slots of the first
+    three level-ups or None, Q/W/E slots in the order they reach rank 5 or None)."""
+    # Sales and repeat purchases are ignored: an item counts at its first purchase.
+    order, first_boots = [], None
+    for e in sorted((e for e in tl["items"] if e["e"] == "buy"), key=lambda e: e["t"]):
+        i = e["id"]
+        if i in boots:
+            if first_boots is None:
+                first_boots = (i, len(order))
+        elif (valid_items is None or i in valid_items) and i not in order:
+            order.append(i)
+
+    slots = [x["slot"] for x in sorted(tl["skills"], key=lambda x: x["t"])]
+    start = tuple(slots[:ORDER_LENGTH]) if len(slots) >= ORDER_LENGTH else None
+    ranks, maxed = Counter(), []
+    for slot in slots:
+        ranks[slot] += 1
+        if slot in (1, 2, 3) and ranks[slot] == MAX_RANK:
+            maxed.append(slot)
+    # With two maxed, the third was still below rank 5 when the game ended: it comes last.
+    max_order = tuple(maxed + [x for x in (1, 2, 3) if x not in maxed]) if len(maxed) >= 2 else None
+    return order, first_boots, start, max_order
+
+
+def skill_letters(slots):
+    return [SKILL_KEYS.get(x, str(x)) for x in slots]
+
+
+def order_stats(s):
+    """Item and skill order of the champion over its non-remake games with a timeline."""
+    tg = s["tg"]
+    first = sorted(s["first"].items(), key=lambda x: (-x[1][0], x[0]))
+    paths = sorted(s["paths"].items(), key=lambda x: (-x[1], x[0]))[:ITEM_PATHS]
+    boots_position = None
+    if s["boots_before"]:
+        b, before = max(s["boots_before"].items(), key=lambda x: (len(x[1]), -x[0]))
+        boots_position = {"id": b, "games": len(before), "median_before": median(before)}
+
+    def top_skill(counts):
+        if not counts:
+            return None
+        order, g = min(counts.items(), key=lambda x: (-x[1], x[0]))
+        return {"order": skill_letters(order), "games": g}
+
+    return {
+        "timeline_games": tg,
+        "first_items": [
+            {
+                "id": i,
+                "games": g,
+                "share": round(g / tg * 100, 1),
+                "win_rate": round(w / g * 100, 1),
+            }
+            for i, (g, w) in first
+        ],
+        "paths": [{"ids": list(path), "games": g} for path, g in paths],
+        "boots_position": boots_position,
+        "skill_start": top_skill(s["skill_start"]),
+        "skill_max": top_skill(s["skill_max"]),
+    }
+
+
 def new_champ_stats():
     return {
         "g": 0,
@@ -779,6 +989,12 @@ def new_champ_stats():
         "pages": {},  # (keystone, primary style, secondary style) -> [games, wins]
         "selections": {},  # page -> Counter of (3 primary, 2 secondary, 3 shards)
         "spells": Counter(),  # sorted spell pair -> games
+        "tg": 0,  # games that are not remakes and have a timeline
+        "first": {},  # first finished item -> [games, wins]
+        "paths": Counter(),  # first three finished items -> games
+        "boots_before": {},  # first boots -> finished items bought before them, per game
+        "skill_start": Counter(),  # slots of the first three level-ups -> games
+        "skill_max": Counter(),  # Q/W/E slots in order of reaching rank 5 -> games
     }
 
 
@@ -871,6 +1087,25 @@ def aggregate(
             if None not in p["spells"]:
                 s["spells"][tuple(sorted(p["spells"]))] += 1
 
+        # --- ITEM AND SKILL ORDER: only games stored with a timeline ---
+        if p.get("timeline"):
+            s["tg"] += 1
+            order, first_boots, start, max_order = timeline_orders(
+                p["timeline"], valid_items, boots
+            )
+            if order:
+                fi = s["first"].setdefault(order[0], [0, 0])
+                fi[0] += 1
+                fi[1] += bool(p["win"])
+            if len(order) >= ORDER_LENGTH:
+                s["paths"][tuple(order[:ORDER_LENGTH])] += 1
+            if first_boots:
+                s["boots_before"].setdefault(first_boots[0], []).append(first_boots[1])
+            if start:
+                s["skill_start"][start] += 1
+            if max_order:
+                s["skill_max"][max_order] += 1
+
     # 2. Count Bans (Global look at the match set)
     for m in match_list:
         for bid in m["bans"]:
@@ -909,6 +1144,7 @@ def aggregate(
                     "boots": item_shares(s["boots"], s["ig"]),
                     "matchups": matchup_cards(s),
                     **rune_stats(s),
+                    **order_stats(s),
                 }
             )
 
@@ -1078,7 +1314,7 @@ def main():
     log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
     logging.basicConfig(
         level=getattr(logging, log_level_str, logging.INFO),
-        format="%(asctime)s [%(levelname)s] %(message)s",
+        format="%(asctime)s [%(levelname)s] [%(threadName)s] %(message)s",
         datefmt="%H:%M:%S",
     )
 
@@ -1112,12 +1348,15 @@ def main():
     # On failure return before the purge and before writing data.json, so the workflow stops
     # and the published site keeps its last good data.
     try:
-        new_count, regions_ok = crawl(
-            watcher, riot_watcher, matches_col, old_ids_col, window, player_count
+        results = crawl(
+            watcher, riot_watcher, matches_col, old_ids_col, window, player_count, valid_items
         )
+        regions_ok = sum(r["ok"] for r in results.values())
         # The purge after this deletes refreshed matches whose queueId is not 420.
         if window and regions_ok:
             refetch_incomplete(watcher, matches_col, window)
+            # After the refetch: a replaced document has lost its timeline.
+            fetch_missing_timelines(watcher, matches_col, window[0], valid_items)
     except RiotAuthError as e:
         logger.error(f"{e}. Check the RIOT_API_KEY secret; data.json not written.")
         return 1
@@ -1153,7 +1392,11 @@ def main():
                 now.strftime("%Y-%m-%d"),
             ),
         )
-    logger.info(f"Complete. New Matches: {new_count}")
+    logger.info(f"Complete. New Matches: {sum(r['downloaded'] for r in results.values())}")
+    for region_code, r in results.items():
+        logger.info(
+            f"{region_code}: {r['requests']} Riot requests, crawl took {r['seconds']:.0f} s."
+        )
     return 0
 
 

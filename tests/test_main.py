@@ -674,8 +674,11 @@ class FakeCollection:
         return SimpleNamespace(deleted_count=len(gone))
 
 
-def fake_watcher(failing_regions=(), status=500, lists=None, versions=None, calls=None):
-    """lists: region -> match ids listed; versions: match id -> game version (default 15.22)."""
+def fake_watcher(
+    failing_regions=(), status=500, lists=None, versions=None, calls=None, timeline=None
+):
+    """lists: region -> match ids listed; versions: match id -> game version (default 15.22);
+    timeline: function (region, match id) -> timeline (default: one without events)."""
     lists = lists or {}
     versions = versions or {}
 
@@ -697,14 +700,22 @@ def fake_watcher(failing_regions=(), status=500, lists=None, versions=None, call
             version=versions.get(match_id, "15.22.1"),
         )
         m["metadata"]["matchId"] = match_id
+        m["info"]["participants"][0]["puuid"] = "pu1"
         m["info"].update(gameDuration=1800, queueId=420)
         return m
+
+    def empty_timeline(region, match_id):
+        return {"info": {"participants": [{"participantId": 1, "puuid": "pu1"}], "frames": []}}
 
     return SimpleNamespace(
         league=SimpleNamespace(
             challenger_by_queue=ladder, grandmaster_by_queue=ladder, masters_by_queue=ladder
         ),
-        match=SimpleNamespace(matchlist_by_puuid=matchlist, by_id=by_id),
+        match=SimpleNamespace(
+            matchlist_by_puuid=matchlist,
+            by_id=by_id,
+            timeline_by_match=timeline or empty_timeline,
+        ),
     )
 
 
@@ -747,7 +758,9 @@ def test_second_run_over_the_same_lists_requests_no_match(monkeypatch, tmp_path)
     col, old = FakeCollection(), FakeCollection()
     run_main(monkeypatch, tmp_path, watcher, col, old)
     # kr_2 is inside the window and stored; kr_1 is outside, recorded, and ends the scan.
-    assert calls == ["kr_3", "kr_2", "kr_1", "euw1_1"]
+    # The regions run concurrently, so only the order within a region is fixed.
+    assert [c for c in calls if c.startswith("kr")] == ["kr_3", "kr_2", "kr_1"]
+    assert [c for c in calls if c.startswith("euw1")] == ["euw1_1"]
     assert sorted(d["metadata"]["matchId"] for d in col.docs) == ["euw1_1", "kr_2", "kr_3"]
     assert old.docs == [{"_id": "kr_1", "seen": "15.22"}]
     calls.clear()
@@ -763,7 +776,7 @@ def test_list_returning_after_the_window_moved_on_requests_no_match(monkeypatch,
     )
     col, old = FakeCollection(), FakeCollection()
     run_main(monkeypatch, tmp_path, watcher, col, old)
-    assert calls == ["kr_1", "euw1_1"]
+    assert sorted(calls) == ["euw1_1", "kr_1"]
     # The player drops off the ladder for longer than the window.
     later = ["15.26.1", "15.25.1", "15.24.1", "15.23.1", "15.22.1"]
     away = fake_watcher(lists={"kr": [], "euw1": []})
@@ -806,7 +819,7 @@ def test_match_aging_out_while_its_player_is_away_is_not_downloaded_again(monkey
     watcher = fake_watcher(lists={"kr": ["kr_1"]}, versions={"kr_1": "15.22.1"}, calls=calls)
     col, old = FakeCollection(), FakeCollection()
     run_main(monkeypatch, tmp_path, watcher, col, old)
-    assert calls == ["kr_1", "euw1_1"]
+    assert sorted(calls) == ["euw1_1", "kr_1"]
     # The player is off the ladder while kr_1 ages out of the window and is purged.
     later = ["15.26.1", "15.25.1", "15.24.1", "15.23.1", "15.22.1"]
     away = fake_watcher(lists={"kr": [], "euw1": []})
@@ -841,6 +854,36 @@ def test_one_failing_region_still_writes(monkeypatch, tmp_path):
     assert data["regions"]["euw1"]["TOP"][0]["name"] == "Garen"
 
 
+def crawl_regions(watcher):
+    return main.crawl(watcher, SimpleNamespace(), FakeCollection(), FakeCollection(), ["15.22"], 1)
+
+
+def test_ordinary_error_in_one_region_still_scans_the_other():
+    results = crawl_regions(fake_watcher(("kr",)))
+    assert results["kr"]["ok"] is False
+    assert results["euw1"]["ok"] is True and results["euw1"]["downloaded"] == 1
+
+
+def test_rejected_key_in_one_region_fails_the_run(monkeypatch, tmp_path):
+    with pytest.raises(main.RiotAuthError):
+        crawl_regions(fake_watcher(("euw1",), status=403))
+    code, _, out = run_main(monkeypatch, tmp_path, fake_watcher(("euw1",), status=403))
+    assert code != 0 and not out.exists()
+
+
+def test_crawl_counts_requests_and_downloads_per_region(caplog):
+    caplog.set_level("INFO")
+    results = crawl_regions(fake_watcher(("kr",)))
+    # euw1: challenger ladder, match list, one match and its timeline; kr: only the failing
+    # ladder request.
+    assert {k: (r["requests"], r["downloaded"]) for k, r in results.items()} == {
+        "kr": (1, 0),
+        "euw1": (4, 1),
+    }
+    assert all(r["seconds"] >= 0 for r in results.values())
+    assert {rec.threadName for rec in caplog.records if "Scan" in rec.message} == {"kr", "euw1"}
+
+
 def test_insert_error_other_than_duplicate_is_logged(monkeypatch, tmp_path, caplog):
     def insert_one(doc):
         raise DuplicateKeyError("dup") if doc["_region"] == "kr" else OSError("disk full")
@@ -850,6 +893,129 @@ def test_insert_error_other_than_duplicate_is_logged(monkeypatch, tmp_path, capl
     assert code == 0
     assert "Could not save euw1_1: disk full" in caplog.text
     assert "Could not save kr_1" not in caplog.text
+
+
+# --- Match timelines ---
+
+
+def ev(kind, pid, t, **fields):
+    return {"type": kind, "participantId": pid, "timestamp": t, **fields}
+
+
+# Timeline participant ids deliberately differ from the match's participant order.
+TIMELINE = {
+    "info": {
+        "participants": [
+            {"participantId": 1, "puuid": "pu2"},
+            {"participantId": 2, "puuid": "pu1"},
+            {"participantId": 3, "puuid": "not-in-match"},
+        ],
+        "frames": [
+            {
+                "events": [
+                    ev("ITEM_PURCHASED", 2, 100, itemId=1055),  # starter, not a valid item
+                    ev("ITEM_PURCHASED", 2, 900, itemId=3031),
+                    ev("ITEM_PURCHASED", 2, 950, itemId=3006),
+                    ev("ITEM_UNDO", 2, 960, beforeId=3006, afterId=0, goldGain=1000),
+                    ev("SKILL_LEVEL_UP", 2, 1000, skillSlot=1, levelUpType="NORMAL"),
+                    ev("SKILL_LEVEL_UP", 2, 1100, skillSlot=4, levelUpType="EVOLVE"),
+                    ev("ITEM_PURCHASED", 1, 1200, itemId=3089),
+                    ev("ITEM_PURCHASED", 3, 1200, itemId=3089),
+                ]
+            },
+            {
+                "events": [
+                    ev("ITEM_SOLD", 2, 2000, itemId=3031),
+                    ev("ITEM_SOLD", 1, 2100, itemId=3089),
+                    ev("ITEM_UNDO", 1, 2110, beforeId=0, afterId=3089, goldGain=-2000),
+                    ev("WARD_PLACED", 2, 2200),
+                ]
+            },
+        ],
+    }
+}
+
+
+def test_slim_timeline_applies_undo_keeps_sales_and_drops_evolves():
+    slim = main.slim_timeline(TIMELINE, {"pu1", "pu2"}, {3031, 3006, 3089})
+    assert slim == {
+        "pu1": {
+            "items": [
+                {"t": 900, "e": "buy", "id": 3031},
+                {"t": 2000, "e": "sell", "id": 3031},
+            ],
+            "skills": [{"t": 1000, "slot": 1}],
+        },
+        # Matched by puuid: participant 1 of the timeline is pu2; the undone sale is gone.
+        "pu2": {"items": [{"t": 1200, "e": "buy", "id": 3089}], "skills": []},
+    }
+
+
+def test_crawl_stores_the_slim_timeline_with_the_match():
+    def timeline(region, match_id):
+        return {
+            "info": {
+                "participants": [{"participantId": 1, "puuid": "pu1"}],
+                "frames": [{"events": [ev("ITEM_PURCHASED", 1, 5, itemId=3031)]}],
+            }
+        }
+
+    col = FakeCollection()
+    main.crawl(
+        fake_watcher(("kr",), timeline=timeline),
+        SimpleNamespace(),
+        col,
+        FakeCollection(),
+        ["15.22"],
+        1,
+        {3031},
+    )
+    [doc] = col.docs
+    assert doc["timeline"] == {"pu1": {"items": [{"t": 5, "e": "buy", "id": 3031}], "skills": []}}
+
+
+def test_failed_timeline_leaves_match_stored_and_a_later_run_fetches_it(monkeypatch, tmp_path):
+    def broken(region, match_id):
+        raise api_error(500)
+
+    col = FakeCollection()
+    code, _, _ = run_main(monkeypatch, tmp_path, fake_watcher(timeline=broken), col)
+    assert code == 0
+    assert sorted(d["metadata"]["matchId"] for d in col.docs) == ["euw1_1", "kr_1"]
+    assert all("timeline" not in d for d in col.docs)
+    calls = []
+    code, _, _ = run_main(monkeypatch, tmp_path, fake_watcher(calls=calls), col)
+    assert code == 0 and calls == []  # matches not downloaded again, only their timelines
+    assert all(d["timeline"] == {"pu1": {"items": [], "skills": []}} for d in col.docs)
+
+
+def test_timeline_not_found_is_marked_and_not_asked_again(monkeypatch, tmp_path):
+    asked = []
+
+    def gone(region, match_id):
+        asked.append(match_id)
+        raise api_error(404)
+
+    col = FakeCollection()
+    run_main(monkeypatch, tmp_path, fake_watcher(timeline=gone), col)
+    assert all(d["timeline"] is None for d in col.docs)
+    asked.clear()
+    run_main(monkeypatch, tmp_path, fake_watcher(timeline=gone), col)
+    assert asked == []
+
+
+def test_missing_timelines_of_previous_patches_are_not_fetched():
+    col = FakeCollection([stored("prev", "15.21.1"), stored("cur", "15.22.1")])
+    assert main.fetch_missing_timelines(fake_watcher(), col, "15.22", None) == 1
+    assert [("timeline" in d) for d in col.docs] == [False, True]
+
+
+def test_rejected_key_on_timeline_stops_the_run(monkeypatch, tmp_path):
+    def rejected(region, match_id):
+        raise api_error(403)
+
+    code, col, out = run_main(monkeypatch, tmp_path, fake_watcher(timeline=rejected))
+    assert code != 0 and not out.exists() and col.docs == []
 
 
 # --- Data Dragon item selection ---
@@ -969,3 +1135,104 @@ def test_unparsable_or_wrong_schema_history_stops_before_writing(monkeypatch, tm
         assert not out.exists()
         assert col.docs == [] and col.deletes == []
         assert (tmp_path / "history.json").read_text() == bad
+
+
+# --- Item and skill order from timelines ---
+
+BOOTS = {3006, 3047}
+
+
+def buys(*ids_at):
+    """Item events of a slim timeline: (item id, time) purchases, ("sell", id, time) sales."""
+    return [
+        {"t": x[2], "e": "sell", "id": x[1]}
+        if x[0] == "sell"
+        else {"t": x[1], "e": "buy", "id": x[0]}
+        for x in ids_at
+    ]
+
+
+def levels(keys):
+    """Skill events of a slim timeline from a string like "QWEQQ" (R is slot 4)."""
+    return [{"t": n, "slot": "QWER".index(k) + 1} for n, k in enumerate(keys)]
+
+
+def timed_game(items, skills="", win=True, remake=None, timeline=True):
+    m = match([player(1, "Garen", 100, "TOP", win=win, name="G", remake=remake)])
+    if timeline:
+        m["timeline"] = {"pu-G": {"items": items, "skills": levels(skills)}}
+    return m
+
+
+def garen_order(*games):
+    valid = LEGENDARY | BOOTS
+    return build(list(games), valid_items=valid, boots=BOOTS)["regions"]["euw1"]["TOP"][0]
+
+
+def test_item_order_is_by_purchase_time_with_sold_items_at_their_purchase():
+    # Events out of order on purpose; 3001 is sold and bought again, 1055 is not finished.
+    items = buys(
+        (3002, 300), (3001, 100), (1055, 50), ("sell", 3001, 400), (3003, 500), (3001, 600)
+    )
+    garen = garen_order(timed_game(items), timed_game(items, win=False))
+    assert garen["timeline_games"] == 2
+    assert garen["first_items"] == [{"id": 3001, "games": 2, "share": 100.0, "win_rate": 50.0}]
+    assert garen["paths"] == [{"ids": [3001, 3002, 3003], "games": 2}]
+
+
+def test_boots_are_left_out_of_the_order_and_placed_by_median():
+    games = [
+        timed_game(buys((3001, 1), (3006, 2), (3002, 3), (3003, 4))),
+        timed_game(buys((3006, 1), (3001, 2), (3002, 3), (3003, 4))),
+        timed_game(buys((3001, 1), (3002, 2), (3006, 3), (3003, 4))),
+        timed_game(buys((3047, 1), (3001, 2))),
+    ]
+    garen = garen_order(*games)
+    assert garen["paths"] == [{"ids": [3001, 3002, 3003], "games": 3}]
+    assert garen["boots_position"] == {"id": 3006, "games": 3, "median_before": 1}
+
+
+def test_game_with_two_finished_items_counts_for_first_item_not_for_paths():
+    garen = garen_order(
+        timed_game(buys((3001, 1), (3002, 2))),
+        timed_game(buys((3002, 1), (3001, 2), (3003, 3))),
+        timed_game([]),
+    )
+    assert [(f["id"], f["games"], f["share"]) for f in garen["first_items"]] == [
+        (3001, 1, 33.3),
+        (3002, 1, 33.3),
+    ]
+    assert garen["paths"] == [{"ids": [3002, 3001, 3003], "games": 1}]
+    assert garen["boots_position"] is None
+
+
+def test_every_first_item_is_published():
+    ids = [3001, 3002, 3003, 3004, 3005, 3031]
+    games = [timed_game(buys((i, 1))) for i in ids]
+    garen = build(games, valid_items=set(ids))["regions"]["euw1"]["TOP"][0]
+    assert [(f["id"], f["games"], f["share"]) for f in garen["first_items"]] == [
+        (i, 1, 16.7) for i in ids
+    ]
+
+
+def test_skill_start_and_max_order_with_one_ability_never_maxed():
+    garen = garen_order(
+        # Q and E reach rank 5, W never does: Q > E > W.
+        timed_game([], "QEWQQRQQEEEE"),
+        timed_game([], "QWEQEQEQEQE"),
+        # Only Q reaches rank 5: not counted for the max order.
+        timed_game([], "QEWQQQQ"),
+    )
+    assert garen["skill_start"] == {"order": ["Q", "E", "W"], "games": 2}
+    assert garen["skill_max"] == {"order": ["Q", "E", "W"], "games": 2}
+
+
+def test_champion_without_timelines_and_remakes_have_no_order():
+    garen = garen_order(
+        timed_game([], timeline=False),
+        timed_game(buys((3001, 1)), "QWE", remake=True),
+    )
+    assert (garen["count"], garen["timeline_games"]) == (2, 0)
+    assert (garen["first_items"], garen["paths"]) == ([], [])
+    assert garen["boots_position"] is None
+    assert (garen["skill_start"], garen["skill_max"]) == (None, None)
