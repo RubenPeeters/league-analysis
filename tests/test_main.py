@@ -3,6 +3,7 @@
 import json
 from types import SimpleNamespace
 
+import pytest
 import requests
 from pymongo.errors import DuplicateKeyError
 from riotwatcher import ApiError
@@ -15,6 +16,8 @@ from main import (
     champion_damage_shares,
     extract_bans,
     get_short_version,
+    incomplete_matches,
+    refetch_incomplete,
     select_items,
     slim_match,
     update_history,
@@ -112,12 +115,119 @@ def test_slim_match_keeps_only_analysis_fields():
     assert slim["_region"] == "euw1"
     assert slim["metadata"] == {"matchId": "EUW1_1"}
     assert slim["info"]["teams"] == [{"teamId": 100, "bans": [{"championId": 5}]}]
-    assert set(slim["info"]) == {"gameVersion", "gameCreation", "teams", "participants"}
+    assert set(slim["info"]) == {
+        "gameVersion",
+        "gameCreation",
+        "gameDuration",
+        "teams",
+        "participants",
+    }
     p = slim["info"]["participants"][0]
     assert "gold" not in p
     assert p["item0"] == 3001 and p["item5"] == 0
     assert p["physicalDamageDealtToChampions"] == 0
     assert p["riotIdGameName"] is None
+    # A response without perks, spells or duration still slims, with None in their place.
+    assert slim["info"]["gameDuration"] is None
+    assert p["perks"] is None and p["summoner1Id"] is None
+    assert p["gameEndedInEarlySurrender"] is None
+
+
+def test_slim_match_keeps_runes_spells_and_game_length():
+    def selections(*ids):
+        return [{"perk": i, "var1": 0, "var2": 0, "var3": 0} for i in ids]
+
+    participant = {
+        "championId": 1,
+        "summoner1Id": 4,
+        "summoner2Id": 14,
+        "gameEndedInEarlySurrender": True,
+        "perks": {
+            "statPerks": {"defense": 5011, "flex": 5008, "offense": 5005},
+            "styles": [
+                {
+                    "description": "primaryStyle",
+                    "style": 8100,
+                    "selections": selections(8112, 8139, 8138, 8135),
+                },
+                {"description": "subStyle", "style": 8300, "selections": selections(8304, 8347)},
+            ],
+        },
+    }
+    detail = {"info": {"gameDuration": 212, "participants": [participant]}}
+    slim = slim_match(detail, "kr")
+    assert slim["info"]["gameDuration"] == 212
+    p = slim["info"]["participants"][0]
+    assert (p["summoner1Id"], p["summoner2Id"], p["gameEndedInEarlySurrender"]) == (4, 14, True)
+    assert p["perks"] == {
+        "primaryStyle": 8100,
+        "primary": [8112, 8139, 8138, 8135],
+        "subStyle": 8300,
+        "secondary": [8304, 8347],
+        "shards": [5005, 5008, 5011],
+    }
+
+
+def stored(match_id, version, **info):
+    return {
+        "_region": "euw1",
+        "metadata": {"matchId": match_id},
+        "info": {"gameVersion": version, **info},
+    }
+
+
+def test_incomplete_matches_are_current_patch_without_game_duration():
+    docs = [
+        stored("old_format", "15.22.700.1"),
+        stored("new_format", "15.22.700.1", gameDuration=1800),
+        stored("new_format_no_duration", "15.22.700.1", gameDuration=None),
+        stored("old_patch", "15.21.400.1"),
+        stored("prefix_patch", "15.2.1.1"),
+    ]
+    assert incomplete_matches(docs, "15.22") == [("euw1", "old_format")]
+
+
+class RefetchCollection:
+    def __init__(self, docs):
+        self.docs = docs
+        self.replaced = []
+
+    def find(self, query, projection):
+        return list(self.docs)
+
+    def replace_one(self, query, doc):
+        self.replaced.append((query, doc))
+
+
+def test_refetch_replaces_incomplete_matches_and_tries_each_once():
+    calls = []
+
+    def by_id(region, match_id):
+        calls.append(match_id)
+        if match_id == "gone":
+            raise api_error(404)
+        if match_id == "broken":
+            raise api_error(500)
+        return {"metadata": {"matchId": match_id}, "info": {"gameDuration": 1500}}
+
+    col = RefetchCollection([stored(m, "15.22.1") for m in ("gone", "broken", "ok")])
+    watcher = SimpleNamespace(match=SimpleNamespace(by_id=by_id))
+    assert refetch_incomplete(watcher, col, "15.22") == 1
+    assert calls == ["gone", "broken", "ok"]
+    [(query, doc)] = col.replaced
+    assert query == {"metadata.matchId": "ok"}
+    assert doc["_region"] == "euw1" and doc["info"]["gameDuration"] == 1500
+
+
+def test_rejected_key_during_refetch_propagates():
+    def by_id(region, match_id):
+        raise api_error(403)
+
+    col = RefetchCollection([stored("a", "15.22.1")])
+    watcher = SimpleNamespace(match=SimpleNamespace(by_id=by_id))
+    with pytest.raises(main.RiotAuthError):
+        refetch_incomplete(watcher, col, "15.22")
+    assert col.replaced == []
 
 
 def champ_games(champ, dmg, n):
