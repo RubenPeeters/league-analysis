@@ -122,13 +122,24 @@ def run_job(jobs, job, run, now=utcnow):
 
 
 def work(jobs, run, stop, poll_seconds=5):
-    """The one worker: jobs one at a time, oldest first, until stop is set."""
+    """The one worker: jobs one at a time, oldest first, until stop is set. A database error
+    is logged and retried after poll_seconds, so the worker never dies."""
+    requeue = False
     while not stop.is_set():
-        job = claim_next(jobs)
-        if job is None:
+        try:
+            if requeue:
+                # The only worker is idle, so a job still running was stranded by the error.
+                requeue_running(jobs)
+                requeue = False
+            job = claim_next(jobs)
+            if job is None:
+                stop.wait(poll_seconds)
+            else:
+                run_job(jobs, job, run)
+        except Exception as e:  # noqa: BLE001 - e.g. a transient MongoDB error
+            logger.error(f"Lookup worker: {type(e).__name__}: {e}")
+            requeue = True
             stop.wait(poll_seconds)
-        else:
-            run_job(jobs, job, run)
 
 
 def load_names(version):

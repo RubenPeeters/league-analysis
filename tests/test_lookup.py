@@ -173,6 +173,39 @@ def test_any_other_failure_is_reason_other_and_the_worker_goes_on(caplog):
     assert job["finished_at"] is not None and "boom" in caplog.text
 
 
+def test_worker_survives_database_errors_and_reruns_the_stranded_job(caplog):
+    jobs = FakeJobs()
+    request(jobs)
+    fail = {"claim": 1, "finish": 1}
+    claim, update = jobs.find_one_and_update, jobs.update_one
+
+    def flaky_claim(*args, **kwargs):
+        if fail["claim"]:
+            fail["claim"] -= 1
+            raise ConnectionError("claim lost")
+        return claim(*args, **kwargs)
+
+    def flaky_update(query, change):
+        if "finished_at" in change.get("$set", {}) and fail["finish"]:
+            fail["finish"] -= 1
+            raise ConnectionError("finish lost")
+        update(query, change)
+
+    jobs.find_one_and_update, jobs.update_one = flaky_claim, flaky_update
+    stop, runs = threading.Event(), []
+
+    def run(job, progress):
+        runs.append(job["_id"])
+        if len(runs) == 2:
+            stop.set()
+        return {"champions": []}
+
+    lookup.work(jobs, run, stop, poll_seconds=0)
+    [job] = jobs.docs
+    assert len(runs) == 2 and job["state"] == "done"
+    assert "claim lost" in caplog.text and "finish lost" in caplog.text
+
+
 def test_result_is_reused_inside_the_window_and_redownloaded_after():
     jobs = FakeJobs()
     first = request(jobs)
