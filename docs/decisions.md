@@ -113,10 +113,10 @@ Each champion (per role and region) gets `timeline_games`, `first_items`, `paths
 
 ## 2026-11-15: champion view is compact, with the detail in tooltips
 
-The champion view shows one screen of small panels (runes, build path, final items, spells and skills) built from icons, bars and percentages; names, descriptions, exact counts and how each number is counted are in a tooltip on hover or tap. Rows under 10 games are dimmed and lose their win-rate colour. The players table shows 8 rows until asked for all.
+The champion view shows a header strip (champion, role, region, patch and five statistics) and one screen of small panels (runes, build path, final items and boots, spells and skills, changes by enemy team) built from icons, bars and percentages; names, descriptions, exact counts and how each number is counted are in a tooltip on hover or focus (so a tap works on a phone), kept inside the viewport and closed by Escape. Anything under 10 games, including a player row, is dimmed, loses its win-rate colour and says so in its tooltip. The players table shows 8 rows until asked for all. Text from Riot and Data Dragon is escaped before it goes into the page.
 **Why:** the earlier view listed every statistic as a sentence, which took several screens and hid the comparison between rows. The layout follows what other stats sites do (u.gg, op.gg, lolalytics).
 
 ## 2026-11-15: `make screenshots` for visual review
 
-`scripts/screenshots.py` photographs the home page, the champion view (with and without a tooltip) and the history page at 375px and 1280px, from a fixture in `tests/fixtures/site/` (a cut-down copy of the data published that day, player names replaced by placeholders). `.forge.toml` sets `screenshots = "make screenshots"`. Playwright is a dev dependency.
+`scripts/screenshots.py` photographs the home page, the champion view (with and without a tooltip) and the history page at 375px and 1280px, from a fixture in `tests/fixtures/site/` (a cut-down copy of the data published that day, player names replaced by placeholders). `.forge.toml` sets `screenshots = "make screenshots"`. Playwright is a dev dependency; the script runs it on the `node` found on PATH when there is one, because Playwright's bundled node needs `libatomic`, which the forge runner image lacks. The champion shots open Jarvan IV, the fixture's KR jungler with a "changes by enemy team" card, so every panel is in the picture.
 **Why:** forge's reviewers can only judge a layout from pictures, and a fixed fixture keeps the pictures unchanged unless a page changes.

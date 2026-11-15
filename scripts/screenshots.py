@@ -5,6 +5,8 @@ The pages are served from a copy of ui/ with tests/fixtures/site/ as ../data/ (t
 use off github.io). The fixture is a cut-down copy of the data published on 2026-11-15 with
 placeholder player names, so the pictures only change when the pages do.
 Browser: CHROME_PATH (set in the forge runner image), else Playwright's own Chromium.
+Playwright's bundled node needs libatomic, which the runner image lacks, so a node on PATH is
+used when there is one (PLAYWRIGHT_NODEJS_PATH overrides).
 Icons and names still come from Data Dragon, so this needs network access.
 """
 
@@ -24,7 +26,8 @@ WIDTHS = [375, 1280]
 
 
 def open_champion(page):
-    page.click("#table-kr tbody tr")
+    # Jarvan IV: the fixture's KR jungler with a "changes by enemy team" card, so every panel shows.
+    page.click("#table-kr tbody tr:has-text('JarvanIV')")
     page.wait_for_selector("#detail-view:not(.hidden)")
 
 
@@ -48,6 +51,8 @@ class Quiet(SimpleHTTPRequestHandler):
 
 
 def main():
+    if shutil.which("node"):
+        os.environ.setdefault("PLAYWRIGHT_NODEJS_PATH", shutil.which("node"))
     OUT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         shutil.copytree(ROOT / "ui", Path(tmp) / "ui")
@@ -65,7 +70,10 @@ def main():
                         if steps:
                             steps(page)
                             page.wait_for_load_state("networkidle")
-                        page.screenshot(path=OUT / f"{name}-{width}.png", full_page=True)
+                        page.wait_for_function("[...document.images].every(i => i.complete)")
+                        page.screenshot(
+                            path=OUT / f"{name}-{width}.png", full_page=True, animations="disabled"
+                        )
                         page.close()
                         print(f"{name}-{width}.png")
                 browser.close()

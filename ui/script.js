@@ -21,7 +21,9 @@ function getOpGgUrl(region, riotId) {
 
 // --- MODAL & UI LOGIC ---
 function toggleModal() { document.getElementById('about-modal').classList.toggle('show'); }
-document.addEventListener('keydown', (e) => { if (e.key === "Escape") document.getElementById('about-modal').classList.remove('show'); });
+document.addEventListener('keydown', (e) => {
+    if (e.key === "Escape") { document.getElementById('about-modal').classList.remove('show'); hideTip(); }
+});
 
 function setRole(role) {
     currentRole = role;
@@ -176,7 +178,7 @@ function renderStats(container, champ, regionKey) {
     const region = REGION_NAMES[regionKey] || 'this region';
     const role = (ROLE_NAMES[currentRole] || currentRole).toLowerCase();
     const stats = [
-        ['Win', `${champ.win_rate}%`, wrClass(champ.win_rate), {
+        ['Win', `${champ.win_rate}%`, champ.count >= LOW_SAMPLE ? wrClass(champ.win_rate) : '', {
             title: 'Win rate', games: champ.count,
             lines: [`${champ.win_rate}% of ${champ.count} games won.`],
             note: `All ${role} games on this champion in the tracked matches, either team.`,
@@ -407,8 +409,14 @@ function renderPlayers(champName) {
     }
 
     const draw = list => {
-        tbody.innerHTML = list.map(p => `
-            <tr class="${p.games < 3 ? 'cv-low' : ''}">
+        tbody.innerHTML = list.map(p => {
+            const low = p.games < LOW_SAMPLE;
+            const tip = tipHtml({
+                title: p.player, games: p.games,
+                lines: [`${p.games} games on this champion in this role, ${p.win_rate}% won, KDA ${p.kda}.`],
+            });
+            return `
+            <tr class="${low ? 'has-tip cv-low' : ''}" ${low ? `tabindex="0" data-tip="${esc(tip)}"` : ''}>
                 <td>
                     <div class="player-cell">
                         <span style="font-weight:bold; color:#fff;">${esc(p.player)}</span>
@@ -419,9 +427,10 @@ function renderPlayers(champName) {
                 </td>
                 <td><span class="region-badge">${esc(p.region.toUpperCase())}</span></td>
                 <td>${p.games}</td>
-                <td class="stat-cell ${p.games >= 3 ? (p.win_rate >= 55 ? 'win-high' : (p.win_rate < 45 ? 'win-low' : '')) : ''}">${p.win_rate}%</td>
-                <td class="stat-cell ${p.kda >= 3.5 && p.games >= 3 ? 'kda-great' : ''}">${p.kda}</td>
-            </tr>`).join('');
+                <td class="stat-cell ${low ? '' : (p.win_rate >= 55 ? 'win-high' : (p.win_rate < 45 ? 'win-low' : ''))}">${p.win_rate}%</td>
+                <td class="stat-cell ${p.kda >= 3.5 && !low ? 'kda-great' : ''}">${p.kda}</td>
+            </tr>`;
+        }).join('');
     };
 
     draw(players.slice(0, PLAYERS_SHOWN));
@@ -507,9 +516,9 @@ function renderTable(regionKey) {
             <td style="color:#666; font-weight:bold; text-align:center;">${index + 1}</td>
             <td>
                 <div class="champ-flex">
-                    <img src="https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/champion/${champ.name}.png" 
+                    <img src="https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/champion/${esc(champ.name)}.png" 
                          class="champ-img" onerror="this.src='https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/profileicon/29.png'">
-                    <span>${champ.name}</span>
+                    <span>${esc(champ.name)}</span>
                 </div>
             </td>
             <td class="stat-cell">${champ.pick_rate}%</td>
@@ -556,3 +565,7 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(err => console.error("Error:", err));
 });
+
+if (typeof module !== 'undefined') {
+    module.exports = { esc, tipHtml, LOW_SAMPLE };
+}

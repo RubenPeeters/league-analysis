@@ -600,6 +600,7 @@ tbody tr a { position: relative; z-index: 2; }
 .cv-tile-share { font-family: 'Consolas', monospace; font-size: 0.72rem; color: var(--text); }
 
 .cv-rune-main { display: flex; align-items: center; gap: 10px; padding: 2px 4px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.cv-rune-main:last-child { border-bottom: none; margin-bottom: 0; }
 .cv-keystone { width: 52px; height: 52px; border-radius: 50%; background: #111; }
 .cv-rune-picks { flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .cv-rune-row { display: flex; align-items: center; gap: 4px; }
@@ -648,5 +649,6 @@ img.has-tip:hover, img.has-tip:focus { background: #111; box-shadow: 0 0 0 1px v
 @media (max-width: 600px) {
     #table-players th, #table-players td { padding: 6px 5px; font-size: 0.75rem; }
     #table-players .player-cell span { max-width: 9.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cv-stats { margin-left: 0; width: 100%; justify-content: space-between; }
+    .cv-stats { margin-left: 0; width: 100%; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+    .cv-stat { min-width: 0; padding-left: 2px; padding-right: 2px; }
 }
