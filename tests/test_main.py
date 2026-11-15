@@ -15,6 +15,7 @@ from main import (
     extract_bans,
     get_short_version,
     slim_match,
+    update_history,
 )
 
 LEGENDARY = {3001, 3002, 3003, 3004}
@@ -278,13 +279,18 @@ def test_leaderboard_keys_are_role_and_champion():
     ]
 
 
-def test_aggregate_keeps_top_15_by_pick_rate():
+def test_aggregate_returns_all_by_pick_rate_and_data_json_keeps_top_15():
     summaries = []
     for n in range(20):
         p = {"role": "TOP", "name": "x", "champ": f"C{n}", "win": True, "k": 0, "d": 0, "a": 0}
         summaries += [{"bans": [], "participants": [{**p, "items": [], "context": []}]}] * (n + 1)
     result = aggregate(summaries, "TOP", "euw1", {}, None, {})
-    assert [c["name"] for c in result] == [f"C{n}" for n in range(19, 4, -1)]
+    assert [c["name"] for c in result] == [f"C{n}" for n in range(19, -1, -1)]
+
+    matches = [match([player(n, f"C{n}", 100, "TOP")]) for n in range(20) for _ in range(n + 1)]
+    assert [c["name"] for c in build(matches)["regions"]["euw1"]["TOP"]] == [
+        f"C{n}" for n in range(19, 4, -1)
+    ]
 
 
 def test_meta_and_regions_shape():
@@ -357,6 +363,7 @@ def run_main(monkeypatch, tmp_path, watcher):
     monkeypatch.setattr(main, "load_dotenv", lambda: None)
     monkeypatch.setattr(main, "DATA_FOLDER", str(tmp_path))
     monkeypatch.setattr(main, "OUTPUT_FILE", str(tmp_path / "data.json"))
+    monkeypatch.setattr(main, "HISTORY_FILE", str(tmp_path / "history.json"))
     monkeypatch.setattr(main, "LolWatcher", lambda key: watcher)
     monkeypatch.setattr(main, "RiotWatcher", lambda key: SimpleNamespace())
     monkeypatch.setattr(main, "connect_db", lambda uri: col)
@@ -397,3 +404,90 @@ def test_insert_error_other_than_duplicate_is_logged(monkeypatch, tmp_path, capl
     assert code == 0
     assert "Could not save euw1_1: disk full" in caplog.text
     assert "Could not save kr_1" not in caplog.text
+
+
+# --- history.json ---
+
+BACKFILL = (
+    '{"patch":"16.2","snapshot_date":"2026-02-03","source":"backfill","complete":false,'
+    '"commit":"e4e488c","regions":{"kr":{"games":2242,"games_estimated":true,"roles":'
+    '{"TOP":[{"name":"Rumble","games":199,"pick_rate":8.9,"win_rate":45.2,"ban_rate":27.2}]}}}}'
+)
+
+
+def regions(games=1):
+    return {"kr": {"games": games, "games_estimated": False, "roles": {}}}
+
+
+def test_update_history_adds_new_patch_in_numeric_order():
+    history = {"schema": 1, "patches": [json.loads(BACKFILL)]}
+    h = update_history(history, "16.10", regions(), "2026-06-01")
+    h = update_history(h, "16.9", regions(), "2026-05-15")
+    assert [p["patch"] for p in h["patches"]] == ["16.2", "16.9", "16.10"]
+    assert h["patches"][2] == {
+        "patch": "16.10",
+        "snapshot_date": "2026-06-01",
+        "source": "generator",
+        "complete": True,
+        "regions": regions(),
+    }
+    assert json.dumps(h["patches"][0], separators=(",", ":")) == BACKFILL
+    assert history["patches"] == [json.loads(BACKFILL)]  # input not mutated
+
+
+def test_update_history_replaces_current_patch_entry():
+    h = update_history({"schema": 1, "patches": []}, "16.21", regions(1), "2026-11-14")
+    h = update_history(h, "16.21", regions(5), "2026-11-15")
+    assert [(p["patch"], p["snapshot_date"]) for p in h["patches"]] == [("16.21", "2026-11-15")]
+    assert h["patches"][0]["regions"]["kr"]["games"] == 5
+
+
+def test_update_history_ignores_patch_without_matches():
+    history = {"schema": 1, "patches": [json.loads(BACKFILL)]}
+    assert update_history(history, "16.2", regions(0), "2026-11-15") == history
+
+
+def test_patch_regions_lists_every_picked_champion_of_the_patch():
+    matches = [
+        match([player(n, f"C{n}", 100, "TOP"), player(99, "Garen", 200, "TOP")], bans=[98])
+        for n in range(20)
+    ]
+    matches += [
+        match([player(98, "Darius", 100, "TOP")], version="16.20.1"),
+        match([player(1, "Ahri", 100, "MIDDLE")], region="kr", version="16.21.1"),
+    ]
+    out = main.patch_regions(matches, "16.21")
+    assert out["kr"]["games"] == 1 and out["kr"]["roles"]["MIDDLE"][0]["name"] == "Ahri"
+    assert out["euw1"] == {"games": 0, "games_estimated": False, "roles": out["euw1"]["roles"]}
+
+    out = main.patch_regions(matches, "15.22")
+    top = out["euw1"]["roles"]["TOP"]
+    assert out["euw1"]["games"] == 20
+    assert len(top) == 21  # all 20 + Garen, not the top 15; Darius (16.20, banned) left out
+    assert top[0] == {
+        "name": "Garen",
+        "games": 20,
+        "pick_rate": 50.0,
+        "win_rate": 100.0,
+        "ban_rate": 0,
+    }
+
+
+def test_main_writes_history_and_keeps_other_patches(monkeypatch, tmp_path):
+    (tmp_path / "history.json").write_text('{"schema":1,"patches":[' + BACKFILL + "]}")
+    code, _, _ = run_main(monkeypatch, tmp_path, fake_watcher())
+    assert code == 0
+    h = json.loads((tmp_path / "history.json").read_text())
+    assert [p["patch"] for p in h["patches"]] == ["15.22", "16.2"]
+    assert h["patches"][0]["regions"]["euw1"]["games"] == 1
+    assert json.dumps(h["patches"][1], separators=(",", ":")) == BACKFILL
+
+
+def test_unparsable_or_wrong_schema_history_stops_before_writing(monkeypatch, tmp_path):
+    for bad in ("{not json", '{"schema": 2, "patches": []}'):
+        (tmp_path / "history.json").write_text(bad)
+        code, col, out = run_main(monkeypatch, tmp_path, fake_watcher())
+        assert code != 0
+        assert not out.exists()
+        assert col.docs == [] and col.deletes == []
+        assert (tmp_path / "history.json").read_text() == bad
