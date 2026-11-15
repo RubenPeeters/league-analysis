@@ -1,0 +1,8 @@
+# Caddy on the host terminates TLS and proxies to 127.0.0.1:8000.
+services:
+  web:
+    build: .
+    env_file: .env
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
