@@ -346,7 +346,7 @@ def matchup_cards(s):
     all_items = s["items"] + s["boots"]
     cards = {}
     for tag, ctx in s["context_data"].items():
-        games, other = ctx["g"], s["g"] - ctx["g"]
+        games, other = ctx["g"], s["ig"] - ctx["g"]
         if games < MATCHUP_MIN_GAMES or other < MATCHUP_MIN_GAMES:
             continue
         rows = []
@@ -623,6 +623,9 @@ def summarize_match(m, champ_id_to_name, tank_champs, damage_shares):
         summary["participants"].append(
             {
                 "role": p["teamPosition"],
+                "remake": bool(p.get("gameEndedInEarlySurrender")),
+                "perks": p.get("perks"),
+                "spells": (p.get("summoner1Id"), p.get("summoner2Id")),
                 "name": name,
                 "champ": p["championName"],
                 "win": p["win"],
@@ -640,6 +643,60 @@ def item_shares(counts, games):
     """The 8 items in most games: id, games and share (% of the champion's games)."""
     ranked = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[:8]
     return [{"id": i, "games": n, "share": round(n / games * 100, 1)} for i, n in ranked]
+
+
+RUNE_PAGES = 3
+SPELL_PAIRS = 2
+
+
+def rune_stats(s):
+    """The champion's most frequent rune pages and spell pairs, shares over games with runes."""
+    rg = s["rg"]
+    pages = sorted(s["pages"].items(), key=lambda x: (-x[1][0], x[0]))[:RUNE_PAGES]
+    runes = [
+        {
+            "keystone": key[0],
+            "primary_style": key[1],
+            "secondary_style": key[2],
+            "games": g,
+            "share": round(g / rg * 100, 1),
+            "win_rate": round(w / g * 100, 1),
+        }
+        for key, (g, w) in pages
+    ]
+    if runes:
+        top = (runes[0]["keystone"], runes[0]["primary_style"], runes[0]["secondary_style"])
+        (sel, n), *_ = sorted(s["selections"][top].items(), key=lambda x: (-x[1], x[0]))
+        runes[0]["selection"] = {
+            "primary": list(sel[:3]),
+            "secondary": list(sel[3:5]),
+            "shards": list(sel[5:]),
+            "games": n,
+        }
+    spells = [
+        {"ids": list(pair), "games": g, "share": round(g / rg * 100, 1)}
+        for pair, g in sorted(s["spells"].items(), key=lambda x: (-x[1], x[0]))[:SPELL_PAIRS]
+    ]
+    return {"rune_games": rg, "runes": runes, "spells": spells}
+
+
+def new_champ_stats():
+    return {
+        "g": 0,
+        "w": 0,
+        "k": 0,
+        "d": 0,
+        "a": 0,
+        "b": 0,
+        "ig": 0,  # games that are not remakes: the item denominator
+        "items": Counter(),
+        "boots": Counter(),
+        "context_data": {},
+        "rg": 0,  # games that are not remakes and have rune data
+        "pages": {},  # (keystone, primary style, secondary style) -> [games, wins]
+        "selections": {},  # page -> Counter of (3 primary, 2 secondary, 3 shards)
+        "spells": Counter(),  # sorted spell pair -> games
+    }
 
 
 def aggregate(
@@ -686,17 +743,7 @@ def aggregate(
 
         # --- CHAMPION STATS INITIALIZATION ---
         if c not in stats:
-            stats[c] = {
-                "g": 0,
-                "w": 0,
-                "k": 0,
-                "d": 0,
-                "a": 0,
-                "b": 0,
-                "items": Counter(),
-                "boots": Counter(),
-                "context_data": {},
-            }
+            stats[c] = new_champ_stats()
 
         s = stats[c]
         s["g"] += 1
@@ -705,6 +752,11 @@ def aggregate(
         s["a"] += p["a"]
         if p["win"]:
             s["w"] += 1
+
+        # Remakes count for pick and win rate, but say nothing about builds, runes or spells.
+        if p["remake"]:
+            continue
+        s["ig"] += 1
 
         # --- ITEM BUILD LOGIC ---
         # 1. Filter: Keep only 'Valid' items (Legendaries)
@@ -723,6 +775,19 @@ def aggregate(
             ctx["g"] += 1
             ctx["items"].update(set(valid_player_items))
 
+        # --- RUNES AND SPELLS: only games stored with rune data ---
+        perks = p["perks"]
+        if perks and perks["primary"]:
+            s["rg"] += 1
+            page = (perks["primary"][0], perks["primaryStyle"], perks["subStyle"])
+            pg = s["pages"].setdefault(page, [0, 0])
+            pg[0] += 1
+            pg[1] += bool(p["win"])
+            sel = tuple(perks["primary"][1:] + perks["secondary"] + perks["shards"])
+            s["selections"].setdefault(page, Counter())[sel] += 1
+            if None not in p["spells"]:
+                s["spells"][tuple(sorted(p["spells"]))] += 1
+
     # 2. Count Bans (Global look at the match set)
     for m in match_list:
         for bid in m["bans"]:
@@ -730,17 +795,7 @@ def aggregate(
                 bn = champ_id_to_name[bid]
                 # Init if banned but not played
                 if bn not in stats:
-                    stats[bn] = {
-                        "g": 0,
-                        "w": 0,
-                        "k": 0,
-                        "d": 0,
-                        "a": 0,
-                        "b": 0,
-                        "items": Counter(),
-                        "boots": Counter(),
-                        "context_data": {},
-                    }
+                    stats[bn] = new_champ_stats()
                 stats[bn]["b"] += 1
 
     # 3. Finalize and Format Results
@@ -766,9 +821,11 @@ def aggregate(
                     "win_rate": win_rate,
                     "ban_rate": ban_rate,
                     "kda": kda,
-                    "items": item_shares(s["items"], s["g"]),
-                    "boots": item_shares(s["boots"], s["g"]),
+                    "item_games": s["ig"],
+                    "items": item_shares(s["items"], s["ig"]),
+                    "boots": item_shares(s["boots"], s["ig"]),
                     "matchups": matchup_cards(s),
+                    **rune_stats(s),
                 }
             )
 
