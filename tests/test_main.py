@@ -1135,3 +1135,104 @@ def test_unparsable_or_wrong_schema_history_stops_before_writing(monkeypatch, tm
         assert not out.exists()
         assert col.docs == [] and col.deletes == []
         assert (tmp_path / "history.json").read_text() == bad
+
+
+# --- Item and skill order from timelines ---
+
+BOOTS = {3006, 3047}
+
+
+def buys(*ids_at):
+    """Item events of a slim timeline: (item id, time) purchases, ("sell", id, time) sales."""
+    return [
+        {"t": x[2], "e": "sell", "id": x[1]}
+        if x[0] == "sell"
+        else {"t": x[1], "e": "buy", "id": x[0]}
+        for x in ids_at
+    ]
+
+
+def levels(keys):
+    """Skill events of a slim timeline from a string like "QWEQQ" (R is slot 4)."""
+    return [{"t": n, "slot": "QWER".index(k) + 1} for n, k in enumerate(keys)]
+
+
+def timed_game(items, skills="", win=True, remake=None, timeline=True):
+    m = match([player(1, "Garen", 100, "TOP", win=win, name="G", remake=remake)])
+    if timeline:
+        m["timeline"] = {"pu-G": {"items": items, "skills": levels(skills)}}
+    return m
+
+
+def garen_order(*games):
+    valid = LEGENDARY | BOOTS
+    return build(list(games), valid_items=valid, boots=BOOTS)["regions"]["euw1"]["TOP"][0]
+
+
+def test_item_order_is_by_purchase_time_with_sold_items_at_their_purchase():
+    # Events out of order on purpose; 3001 is sold and bought again, 1055 is not finished.
+    items = buys(
+        (3002, 300), (3001, 100), (1055, 50), ("sell", 3001, 400), (3003, 500), (3001, 600)
+    )
+    garen = garen_order(timed_game(items), timed_game(items, win=False))
+    assert garen["timeline_games"] == 2
+    assert garen["first_items"] == [{"id": 3001, "games": 2, "share": 100.0, "win_rate": 50.0}]
+    assert garen["paths"] == [{"ids": [3001, 3002, 3003], "games": 2}]
+
+
+def test_boots_are_left_out_of_the_order_and_placed_by_median():
+    games = [
+        timed_game(buys((3001, 1), (3006, 2), (3002, 3), (3003, 4))),
+        timed_game(buys((3006, 1), (3001, 2), (3002, 3), (3003, 4))),
+        timed_game(buys((3001, 1), (3002, 2), (3006, 3), (3003, 4))),
+        timed_game(buys((3047, 1), (3001, 2))),
+    ]
+    garen = garen_order(*games)
+    assert garen["paths"] == [{"ids": [3001, 3002, 3003], "games": 3}]
+    assert garen["boots_position"] == {"id": 3006, "games": 3, "median_before": 1}
+
+
+def test_game_with_two_finished_items_counts_for_first_item_not_for_paths():
+    garen = garen_order(
+        timed_game(buys((3001, 1), (3002, 2))),
+        timed_game(buys((3002, 1), (3001, 2), (3003, 3))),
+        timed_game([]),
+    )
+    assert [(f["id"], f["games"], f["share"]) for f in garen["first_items"]] == [
+        (3001, 1, 33.3),
+        (3002, 1, 33.3),
+    ]
+    assert garen["paths"] == [{"ids": [3002, 3001, 3003], "games": 1}]
+    assert garen["boots_position"] is None
+
+
+def test_every_first_item_is_published():
+    ids = [3001, 3002, 3003, 3004, 3005, 3031]
+    games = [timed_game(buys((i, 1))) for i in ids]
+    garen = build(games, valid_items=set(ids))["regions"]["euw1"]["TOP"][0]
+    assert [(f["id"], f["games"], f["share"]) for f in garen["first_items"]] == [
+        (i, 1, 16.7) for i in ids
+    ]
+
+
+def test_skill_start_and_max_order_with_one_ability_never_maxed():
+    garen = garen_order(
+        # Q and E reach rank 5, W never does: Q > E > W.
+        timed_game([], "QEWQQRQQEEEE"),
+        timed_game([], "QWEQEQEQEQE"),
+        # Only Q reaches rank 5: not counted for the max order.
+        timed_game([], "QEWQQQQ"),
+    )
+    assert garen["skill_start"] == {"order": ["Q", "E", "W"], "games": 2}
+    assert garen["skill_max"] == {"order": ["Q", "E", "W"], "games": 2}
+
+
+def test_champion_without_timelines_and_remakes_have_no_order():
+    garen = garen_order(
+        timed_game([], timeline=False),
+        timed_game(buys((3001, 1)), "QWE", remake=True),
+    )
+    assert (garen["count"], garen["timeline_games"]) == (2, 0)
+    assert (garen["first_items"], garen["paths"]) == ([], [])
+    assert garen["boots_position"] is None
+    assert (garen["skill_start"], garen["skill_max"]) == (None, None)

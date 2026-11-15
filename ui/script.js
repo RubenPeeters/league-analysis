@@ -54,6 +54,8 @@ function openDetailView(champData) {
     renderItemShares(document.getElementById('detail-boots'), champData.boots, champData.item_games);
     renderRunes(document.getElementById('detail-runes'), champData);
     renderSpells(document.getElementById('detail-spells'), champData);
+    renderOrder(document.getElementById('detail-order'), champData);
+    renderSkills(document.getElementById('detail-skills'), champData);
 
     renderMatchups(document.getElementById('context-builds'), champData.matchups);
 
@@ -230,6 +232,53 @@ function renderSpells(container, champ) {
             `${icons.map(i => i.name).join(' + ')}: ${pair.share}% ` +
             `(${pair.games} of ${champ.rune_games} games)`));
     });
+}
+
+function item(id) {
+    const name = itemNames[id] || `Item ${id}`;
+    return { name, src: `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VER}/img/item/${id}.png` };
+}
+
+function renderOrder(container, champ) {
+    container.innerHTML = '';
+    const n = champ.timeline_games;
+    if (!n) {
+        noData(container, 'No timeline data for this champion yet.');
+        return;
+    }
+    (champ.paths || []).forEach(path => {
+        const icons = path.ids.map(item);
+        container.appendChild(iconRow(icons,
+            `${icons.map((i, k) => `${k + 1}. ${i.name}`).join(' ')} (${path.games} of ${n} games)`));
+    });
+    (champ.first_items || []).forEach(f => {
+        const i = item(f.id);
+        container.appendChild(iconRow([i],
+            `First item ${i.name}: ${f.share}% (${f.games} of ${n} games), ${f.win_rate}% win rate`));
+    });
+    const b = champ.boots_position;
+    if (b) {
+        const i = item(b.id);
+        container.appendChild(iconRow([i],
+            `${i.name}: bought after a median of ${b.median_before} finished items (${b.games} games)`));
+    }
+}
+
+function renderSkills(container, champ) {
+    container.innerHTML = '';
+    const n = champ.timeline_games;
+    if (!n || (!champ.skill_start && !champ.skill_max)) {
+        noData(container, 'No timeline data for this champion yet.');
+        return;
+    }
+    if (champ.skill_start) {
+        container.appendChild(iconRow([], `First three levels: ${champ.skill_start.order.join(' > ')} ` +
+            `(${champ.skill_start.games} of ${n} games)`));
+    }
+    if (champ.skill_max) {
+        container.appendChild(iconRow([], `Max order: ${champ.skill_max.order.join(' > ')} ` +
+            `(${champ.skill_max.games} of ${n} games)`));
+    }
 }
 
 function loadRunesAndSpells() {
