@@ -747,7 +747,9 @@ def test_second_run_over_the_same_lists_requests_no_match(monkeypatch, tmp_path)
     col, old = FakeCollection(), FakeCollection()
     run_main(monkeypatch, tmp_path, watcher, col, old)
     # kr_2 is inside the window and stored; kr_1 is outside, recorded, and ends the scan.
-    assert calls == ["kr_3", "kr_2", "kr_1", "euw1_1"]
+    # The regions run concurrently, so only the order within a region is fixed.
+    assert [c for c in calls if c.startswith("kr")] == ["kr_3", "kr_2", "kr_1"]
+    assert [c for c in calls if c.startswith("euw1")] == ["euw1_1"]
     assert sorted(d["metadata"]["matchId"] for d in col.docs) == ["euw1_1", "kr_2", "kr_3"]
     assert old.docs == [{"_id": "kr_1", "seen": "15.22"}]
     calls.clear()
@@ -763,7 +765,7 @@ def test_list_returning_after_the_window_moved_on_requests_no_match(monkeypatch,
     )
     col, old = FakeCollection(), FakeCollection()
     run_main(monkeypatch, tmp_path, watcher, col, old)
-    assert calls == ["kr_1", "euw1_1"]
+    assert sorted(calls) == ["euw1_1", "kr_1"]
     # The player drops off the ladder for longer than the window.
     later = ["15.26.1", "15.25.1", "15.24.1", "15.23.1", "15.22.1"]
     away = fake_watcher(lists={"kr": [], "euw1": []})
@@ -806,7 +808,7 @@ def test_match_aging_out_while_its_player_is_away_is_not_downloaded_again(monkey
     watcher = fake_watcher(lists={"kr": ["kr_1"]}, versions={"kr_1": "15.22.1"}, calls=calls)
     col, old = FakeCollection(), FakeCollection()
     run_main(monkeypatch, tmp_path, watcher, col, old)
-    assert calls == ["kr_1", "euw1_1"]
+    assert sorted(calls) == ["euw1_1", "kr_1"]
     # The player is off the ladder while kr_1 ages out of the window and is purged.
     later = ["15.26.1", "15.25.1", "15.24.1", "15.23.1", "15.22.1"]
     away = fake_watcher(lists={"kr": [], "euw1": []})
@@ -839,6 +841,35 @@ def test_one_failing_region_still_writes(monkeypatch, tmp_path):
     data = json.loads(out.read_text())
     assert data["meta"]["total_games"] == 1
     assert data["regions"]["euw1"]["TOP"][0]["name"] == "Garen"
+
+
+def crawl_regions(watcher):
+    return main.crawl(watcher, SimpleNamespace(), FakeCollection(), FakeCollection(), ["15.22"], 1)
+
+
+def test_ordinary_error_in_one_region_still_scans_the_other():
+    results = crawl_regions(fake_watcher(("kr",)))
+    assert results["kr"]["ok"] is False
+    assert results["euw1"]["ok"] is True and results["euw1"]["downloaded"] == 1
+
+
+def test_rejected_key_in_one_region_fails_the_run(monkeypatch, tmp_path):
+    with pytest.raises(main.RiotAuthError):
+        crawl_regions(fake_watcher(("euw1",), status=403))
+    code, _, out = run_main(monkeypatch, tmp_path, fake_watcher(("euw1",), status=403))
+    assert code != 0 and not out.exists()
+
+
+def test_crawl_counts_requests_and_downloads_per_region(caplog):
+    caplog.set_level("INFO")
+    results = crawl_regions(fake_watcher(("kr",)))
+    # euw1: challenger ladder, match list, one match; kr: only the failing ladder request.
+    assert {k: (r["requests"], r["downloaded"]) for k, r in results.items()} == {
+        "kr": (1, 0),
+        "euw1": (3, 1),
+    }
+    assert all(r["seconds"] >= 0 for r in results.values())
+    assert {rec.threadName for rec in caplog.records if "Scan" in rec.message} == {"kr", "euw1"}
 
 
 def test_insert_error_other_than_duplicate_is_logged(monkeypatch, tmp_path, caplog):
