@@ -56,6 +56,13 @@ python -m http.server            # serve the repo root
 
 Then open http://localhost:8000/ui/.
 
+## Web service (player lookup)
+
+`src/web.py` needs `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_GUILD_ID`,
+`DISCORD_ROLE_ID`, `SESSION_SECRET` and `PUBLIC_URL` (see `.env.example`) and refuses to start
+without them. On the server, `docker compose up -d --build` runs it on `127.0.0.1:8000` behind
+Caddy. Its session cookie is `Secure`, so login only works over https.
+
 ## Checks
 
 ```sh
