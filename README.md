@@ -39,6 +39,7 @@ Pages serves. `data/` is not tracked on `main` or `dev`.
 - `MONGODB_URI` (required)
 - `PLAYER_COUNT`
 - `KEEP_PREVIOUS_PATCHES` (default 2)
+- `PLAYER_MATCH_COUNT` (default 100; `src/player.py` only)
 - `LOG_LEVEL`
 
 Locally they are read from a `.env` file in the repo root. In CI, `RIOT_API_KEY` and
@@ -49,10 +50,18 @@ Locally they are read from a `.env` file in the repo root. In CI, `RIOT_API_KEY`
 ```sh
 uv sync
 uv run python src/main.py        # writes data/data.json
+uv run python src/player.py "name#tag" euw1   # stores one player's ranked matches
 python -m http.server            # serve the repo root
 ```
 
 Then open http://localhost:8000/ui/.
+
+## Web service (player lookup)
+
+`src/web.py` needs `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_GUILD_ID`,
+`DISCORD_ROLE_ID`, `SESSION_SECRET` and `PUBLIC_URL` (see `.env.example`) and refuses to start
+without them. On the server, `docker compose up -d --build` runs it on `127.0.0.1:8000` behind
+Caddy. Its session cookie is `Secure`, so login only works over https.
 
 ## Checks
 

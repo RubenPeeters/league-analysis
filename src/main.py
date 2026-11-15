@@ -321,9 +321,14 @@ def slim_match(match_detail, region_code):
     }
 
 
+# Purchases up to this time (ms) are the starting items.
+START_ITEMS_MS = 60_000
+
+
 def slim_timeline(timeline, puuids, valid_items):
-    """Per puuid of the match: its item events (valid_items only; all items when None) and
-    normal skill level-ups, each with its timestamp in ms.
+    """Per puuid of the match: its item events (valid_items only; all items when None),
+    normal skill level-ups, each with its timestamp in ms, and as start the ids of every item
+    bought in the first START_ITEMS_MS (any item).
 
     Timeline participants are matched by puuid, not by position. An ITEM_UNDO removes the
     last purchase (or sale) it reverts, so an undone purchase does not appear.
@@ -334,6 +339,8 @@ def slim_timeline(timeline, puuids, valid_items):
         if tp.get("puuid") in puuids
     }
     slim = {puuid: {"items": [], "skills": []} for puuid in by_id.values()}
+    # Every purchase as (t, id), so an undo removes the purchase it reverts, filtered or not.
+    buys = {puuid: [] for puuid in by_id.values()}
     for frame in timeline.get("info", {}).get("frames", []):
         for e in frame.get("events", []):
             puuid = by_id.get(e.get("participantId"))
@@ -341,6 +348,8 @@ def slim_timeline(timeline, puuids, valid_items):
                 continue
             kind, t = e.get("type"), e.get("timestamp")
             items = slim[puuid]["items"]
+            if kind == "ITEM_PURCHASED":
+                buys[puuid].append((t, e.get("itemId")))
             if kind in ("ITEM_PURCHASED", "ITEM_SOLD"):
                 if valid_items is None or e.get("itemId") in valid_items:
                     items.append(
@@ -359,8 +368,15 @@ def slim_timeline(timeline, puuids, valid_items):
                     if (items[i]["e"], items[i]["id"]) == undone:
                         del items[i]
                         break
+                bought = buys[puuid] if undone[0] == "buy" else []
+                for i in range(len(bought) - 1, -1, -1):
+                    if bought[i][1] == undone[1]:
+                        del bought[i]
+                        break
             elif kind == "SKILL_LEVEL_UP" and e.get("levelUpType") == "NORMAL":
                 slim[puuid]["skills"].append({"t": t, "slot": e.get("skillSlot")})
+    for puuid, bought in buys.items():
+        slim[puuid]["start"] = [i for t, i in bought if t <= START_ITEMS_MS]
     return slim
 
 
@@ -418,14 +434,15 @@ def analyze_enemy_comp(match_info, my_team_id, tank_champs, damage_shares):
     return tags
 
 
-def matchup_cards(s):
-    """Per enemy type: the items (boots included) whose share against that type differs by at
-    least MATCHUP_MIN_DIFF points from their share in the champion's other games."""
+def matchup_cards(s, min_games=MATCHUP_MIN_GAMES, min_other=MATCHUP_MIN_GAMES):
+    """Per enemy type (or other context): the items (boots included) whose share in its games
+    differs by at least MATCHUP_MIN_DIFF points from their share in the champion's other games;
+    min_games games in the context and min_other other games."""
     all_items = s["items"] + s["boots"]
     cards = {}
     for tag, ctx in s["context_data"].items():
         games, other = ctx["g"], s["ig"] - ctx["g"]
-        if games < MATCHUP_MIN_GAMES or other < MATCHUP_MIN_GAMES:
+        if games < min_games or other < min_other:
             continue
         rows = []
         for i, total in all_items.items():
@@ -492,6 +509,97 @@ def log_storage_size(matches_col):
 
 
 # --- 6. CRAWLER ---
+def scan_match_list(
+    watcher,
+    matches_col,
+    old_ids_col,
+    window,
+    region_code,
+    match_ids,
+    valid_items,
+    counts,
+    progress=None,
+):
+    """Store the listed matches (newest first) that are not stored yet, with their timelines.
+
+    The scan stops at the first match older than the window, whose id is recorded in
+    old_ids_col so it is never downloaded again. counts (listed is the caller's) is updated;
+    progress, when given, is called with (matches done, len(match_ids)) before each match and
+    once at the end.
+    Return the ids of the matches stored before or by this scan, in list order.
+    """
+
+    def record_old(match_id):
+        # seen: the last patch a list returned it, to tell live records from dormant ones.
+        old_ids_col.update_one({"_id": match_id}, {"$set": {"seen": window[0]}}, upsert=True)
+
+    found = []
+    stored = {
+        d["metadata"]["matchId"]: get_short_version(d.get("info", {}).get("gameVersion"))
+        for d in matches_col.find(
+            {"metadata.matchId": {"$in": match_ids}},
+            {"metadata.matchId": 1, "info.gameVersion": 1},
+        )
+    }
+    known_old = {d["_id"] for d in old_ids_col.find({"_id": {"$in": match_ids}}, {"_id": 1})}
+
+    for done, match_id in enumerate(match_ids):
+        if progress:
+            progress(done, len(match_ids))
+        if match_id in known_old:
+            record_old(match_id)
+            break
+        if match_id in stored:
+            # Still stored at a patch change: the purge after the crawl deletes it.
+            if window and is_older(stored[match_id], window):
+                record_old(match_id)
+                counts["too_old"] += 1
+                break
+            counts["stored"] += 1
+            found.append(match_id)
+            continue
+
+        # The old script failed here with a NameError when the patch was
+        # unknown; kept as an explicit error so no behaviour changes (#2).
+        if not window:
+            raise RuntimeError("current patch unknown, not saving matches")
+        match_detail = smart_request(watcher.match.by_id, region_code, match_id)
+        if not match_detail:
+            continue
+        match_ver = get_short_version(match_detail.get("info", {}).get("gameVersion"))
+        if is_older(match_ver, window):
+            record_old(match_id)
+            counts["too_old"] += 1
+            break  # the list is newest first: the rest is older still
+
+        # Store only essential fields to reduce storage usage
+        slimmed = slim_match(match_detail, region_code)
+        try:
+            puuids = {p["puuid"] for p in slimmed["info"]["participants"]}
+            slimmed["timeline"] = fetch_timeline(
+                watcher, region_code, match_id, puuids, valid_items
+            )
+            counts["timelines"] += slimmed["timeline"] is not None
+        except RiotAuthError:
+            raise
+        except Exception as e:  # noqa: BLE001 - store the match, a later run retries
+            logger.warning(f"  No timeline for {match_id}: {e}")
+
+        try:
+            matches_col.insert_one(slimmed)
+            counts["downloaded"] += 1
+            found.append(match_id)
+            logger.info(f"  [+] Saved: {match_id}")
+        except DuplicateKeyError:
+            found.append(match_id)  # already saved, e.g. by another player's history
+        except Exception as e:  # noqa: BLE001 - skip this match, keep crawling
+            logger.error(f"  Could not save {match_id}: {e}")
+    # Also after a stop at an older match: the rest of the list needs no work.
+    if progress:
+        progress(len(match_ids), len(match_ids))
+    return found
+
+
 def crawl_region(
     watcher,
     riot_watcher,
@@ -505,16 +613,9 @@ def crawl_region(
 ):
     """Download new ranked solo matches of one region's top players into matches_col.
 
-    Each list is scanned newest first and stops at the first match older than the window,
-    whose id is recorded in old_ids_col so it is never downloaded again.
-    Return the Counter of matches listed, stored, downloaded and too old, and of timelines
-    fetched. Errors propagate.
+    Each list is scanned by scan_match_list(). Return the Counter of matches listed, stored,
+    downloaded and too old, and of timelines fetched. Errors propagate.
     """
-
-    def record_old(match_id):
-        # seen: the last patch a list returned it, to tell live records from dormant ones.
-        old_ids_col.update_one({"_id": match_id}, {"$set": {"seen": window[0]}}, upsert=True)
-
     logger.info(f"=== Scan: {region_name} ({region_code}) ===")
     counts = Counter(listed=0, stored=0, downloaded=0, too_old=0, timelines=0)
     # Tiered fallback: Challenger → Grandmaster → Master → Database → Pro Players
@@ -616,64 +717,16 @@ def crawl_region(
                 continue
             counts["listed"] += len(match_ids)
 
-            stored = {
-                d["metadata"]["matchId"]: get_short_version(d.get("info", {}).get("gameVersion"))
-                for d in matches_col.find(
-                    {"metadata.matchId": {"$in": match_ids}},
-                    {"metadata.matchId": 1, "info.gameVersion": 1},
-                )
-            }
-            known_old = {
-                d["_id"] for d in old_ids_col.find({"_id": {"$in": match_ids}}, {"_id": 1})
-            }
-
-            for match_id in match_ids:
-                if match_id in known_old:
-                    record_old(match_id)
-                    break
-                if match_id in stored:
-                    # Still stored at a patch change: the purge after the crawl deletes it.
-                    if window and is_older(stored[match_id], window):
-                        record_old(match_id)
-                        counts["too_old"] += 1
-                        break
-                    counts["stored"] += 1
-                    continue
-
-                # The old script failed here with a NameError when the patch was
-                # unknown; kept as an explicit error so no behaviour changes (#2).
-                if not window:
-                    raise RuntimeError("current patch unknown, not saving matches")
-                match_detail = smart_request(watcher.match.by_id, region_code, match_id)
-                if not match_detail:
-                    continue
-                match_ver = get_short_version(match_detail.get("info", {}).get("gameVersion"))
-                if is_older(match_ver, window):
-                    record_old(match_id)
-                    counts["too_old"] += 1
-                    break  # the list is newest first: the rest is older still
-
-                # Store only essential fields to reduce storage usage
-                slimmed = slim_match(match_detail, region_code)
-                try:
-                    puuids = {p["puuid"] for p in slimmed["info"]["participants"]}
-                    slimmed["timeline"] = fetch_timeline(
-                        watcher, region_code, match_id, puuids, valid_items
-                    )
-                    counts["timelines"] += slimmed["timeline"] is not None
-                except RiotAuthError:
-                    raise
-                except Exception as e:  # noqa: BLE001 - store the match, a later run retries
-                    logger.warning(f"  No timeline for {match_id}: {e}")
-
-                try:
-                    matches_col.insert_one(slimmed)
-                    counts["downloaded"] += 1
-                    logger.info(f"  [+] Saved: {match_id}")
-                except DuplicateKeyError:
-                    pass  # already saved, e.g. by another player's history
-                except Exception as e:  # noqa: BLE001 - skip this match, keep crawling
-                    logger.error(f"  Could not save {match_id}: {e}")
+            scan_match_list(
+                watcher,
+                matches_col,
+                old_ids_col,
+                window,
+                region_code,
+                match_ids,
+                valid_items,
+                counts,
+            )
 
             logger.info(f"Player {i + 1}/{player_count} scanned.")
         except RiotAuthError:
@@ -862,9 +915,10 @@ def summarize_match(m, champ_id_to_name, tank_champs, damage_shares):
     return summary
 
 
-def item_shares(counts, games):
-    """The 8 items in most games: id, games and share (% of the champion's games)."""
-    ranked = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[:8]
+def item_shares(counts, games, limit=8):
+    """The limit (None: all) items in most games: id, games and share (% of the champion's
+    games)."""
+    ranked = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[:limit]
     return [{"id": i, "games": n, "share": round(n / games * 100, 1)} for i, n in ranked]
 
 
@@ -872,10 +926,11 @@ RUNE_PAGES = 3
 SPELL_PAIRS = 2
 
 
-def rune_stats(s):
-    """The champion's most frequent rune pages and spell pairs, shares over games with runes."""
+def rune_stats(s, pages_limit=RUNE_PAGES):
+    """The champion's most frequent rune pages (pages_limit, None: all) and spell pairs, shares
+    over games with runes."""
     rg = s["rg"]
-    pages = sorted(s["pages"].items(), key=lambda x: (-x[1][0], x[0]))[:RUNE_PAGES]
+    pages = sorted(s["pages"].items(), key=lambda x: (-x[1][0], x[0]))[:pages_limit]
     runes = [
         {
             "keystone": key[0],
@@ -1006,9 +1061,12 @@ def aggregate(
     valid_items,
     player_performance,
     boots=frozenset(),
+    matchup_min_games=MATCHUP_MIN_GAMES,
+    matchup_min_other=MATCHUP_MIN_GAMES,
+    capped=True,
 ):
     """Stats of every champion picked or banned in one role, by pick rate; adds each player's
-    games to player_performance."""
+    games to player_performance. capped=False lists every item and rune page."""
     stats = {}
     total_matches = len(match_list)
     if total_matches == 0:
@@ -1140,10 +1198,10 @@ def aggregate(
                     "ban_rate": ban_rate,
                     "kda": kda,
                     "item_games": s["ig"],
-                    "items": item_shares(s["items"], s["ig"]),
-                    "boots": item_shares(s["boots"], s["ig"]),
-                    "matchups": matchup_cards(s),
-                    **rune_stats(s),
+                    "items": item_shares(s["items"], s["ig"], 8 if capped else None),
+                    "boots": item_shares(s["boots"], s["ig"], 8 if capped else None),
+                    "matchups": matchup_cards(s, matchup_min_games, matchup_min_other),
+                    **rune_stats(s, RUNE_PAGES if capped else None),
                     **order_stats(s),
                 }
             )
