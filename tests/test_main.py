@@ -1206,6 +1206,15 @@ def test_game_with_two_finished_items_counts_for_first_item_not_for_paths():
     assert garen["boots_position"] is None
 
 
+def test_every_first_item_is_published():
+    ids = [3001, 3002, 3003, 3004, 3005, 3031]
+    games = [timed_game(buys((i, 1))) for i in ids]
+    garen = build(games, valid_items=set(ids))["regions"]["euw1"]["TOP"][0]
+    assert [(f["id"], f["games"], f["share"]) for f in garen["first_items"]] == [
+        (i, 1, 16.7) for i in ids
+    ]
+
+
 def test_skill_start_and_max_order_with_one_ability_never_maxed():
     garen = garen_order(
         # Q and E reach rank 5, W never does: Q > E > W.

@@ -904,7 +904,6 @@ def rune_stats(s):
 
 
 ORDER_LENGTH = 3
-FIRST_ITEMS = 5
 ITEM_PATHS = 3
 SKILL_KEYS = {1: "Q", 2: "W", 3: "E", 4: "R"}
 MAX_RANK = 5
@@ -943,7 +942,7 @@ def skill_letters(slots):
 def order_stats(s):
     """Item and skill order of the champion over its non-remake games with a timeline."""
     tg = s["tg"]
-    first = sorted(s["first"].items(), key=lambda x: (-x[1][0], x[0]))[:FIRST_ITEMS]
+    first = sorted(s["first"].items(), key=lambda x: (-x[1][0], x[0]))
     paths = sorted(s["paths"].items(), key=lambda x: (-x[1], x[0]))[:ITEM_PATHS]
     boots_position = None
     if s["boots_before"]:

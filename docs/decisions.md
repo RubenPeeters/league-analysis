@@ -85,7 +85,7 @@ For each newly stored match the crawler also requests the match-v5 timeline thro
 
 Each champion (per role and region) gets `timeline_games`, `first_items`, `paths`, `boots_position`, `skill_start` and `skill_max` in `data.json`, next to the item frequencies, which stay. Only games that are not remakes and have a stored timeline count; `timeline_games` is their number.
 - A game's item order is its finished non-boot items in order of first purchase. Sales are ignored, so an item sold later counts at its purchase position; buying it again does not add it twice.
-- `first_items`: the 5 most frequent first items, share over `timeline_games`, with games and win rate. A game with no finished item counts in `timeline_games` only.
+- `first_items`: every first item, most frequent first, share over `timeline_games`, with games and win rate. A game with no finished item counts in `timeline_games` only.
 - `paths`: the 3 most frequent ordered first three items, with games. Games with fewer than three finished items are left out.
 - `boots_position`: for the boots that are most often a game's first boots, in how many games, and the median number of finished items bought before them.
 - `skill_start`: the most frequent order of the first three level-ups. `skill_max`: the most frequent order in which Q, W and E reach rank 5; when only two reach it, the third is put last; a game where fewer than two reach it is left out.
