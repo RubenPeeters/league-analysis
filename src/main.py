@@ -320,6 +320,58 @@ def slim_match(match_detail, region_code):
     }
 
 
+def slim_timeline(timeline, puuids, valid_items):
+    """Per puuid of the match: its item events (valid_items only; all items when None) and
+    normal skill level-ups, each with its timestamp in ms.
+
+    Timeline participants are matched by puuid, not by position. An ITEM_UNDO removes the
+    last purchase (or sale) it reverts, so an undone purchase does not appear.
+    """
+    by_id = {
+        tp["participantId"]: tp["puuid"]
+        for tp in timeline.get("info", {}).get("participants", [])
+        if tp.get("puuid") in puuids
+    }
+    slim = {puuid: {"items": [], "skills": []} for puuid in by_id.values()}
+    for frame in timeline.get("info", {}).get("frames", []):
+        for e in frame.get("events", []):
+            puuid = by_id.get(e.get("participantId"))
+            if puuid is None:
+                continue
+            kind, t = e.get("type"), e.get("timestamp")
+            items = slim[puuid]["items"]
+            if kind in ("ITEM_PURCHASED", "ITEM_SOLD"):
+                if valid_items is None or e.get("itemId") in valid_items:
+                    items.append(
+                        {
+                            "t": t,
+                            "e": "buy" if kind == "ITEM_PURCHASED" else "sell",
+                            "id": e.get("itemId"),
+                        }
+                    )
+            elif kind == "ITEM_UNDO":
+                # Undoing a purchase has beforeId = the item, an undone sale has afterId.
+                undone = (
+                    ("buy", e.get("beforeId")) if e.get("beforeId") else ("sell", e.get("afterId"))
+                )
+                for i in range(len(items) - 1, -1, -1):
+                    if (items[i]["e"], items[i]["id"]) == undone:
+                        del items[i]
+                        break
+            elif kind == "SKILL_LEVEL_UP" and e.get("levelUpType") == "NORMAL":
+                slim[puuid]["skills"].append({"t": t, "slot": e.get("skillSlot")})
+    return slim
+
+
+def fetch_timeline(watcher, region_code, match_id, puuids, valid_items):
+    """The slim timeline of a match, or None when Riot reports it not found.
+
+    Any other failure raises, RiotAuthError included.
+    """
+    timeline = smart_request(watcher.match.timeline_by_match, region_code, match_id)
+    return None if timeline is None else slim_timeline(timeline, puuids, valid_items)
+
+
 MIN_SHARE_GAMES = 5
 MATCHUP_MIN_GAMES = 10
 MATCHUP_MIN_DIFF = 20  # percentage points
@@ -440,13 +492,22 @@ def log_storage_size(matches_col):
 
 # --- 6. CRAWLER ---
 def crawl_region(
-    watcher, riot_watcher, matches_col, old_ids_col, window, player_count, region_code, region_name
+    watcher,
+    riot_watcher,
+    matches_col,
+    old_ids_col,
+    window,
+    player_count,
+    region_code,
+    region_name,
+    valid_items=None,
 ):
     """Download new ranked solo matches of one region's top players into matches_col.
 
     Each list is scanned newest first and stops at the first match older than the window,
     whose id is recorded in old_ids_col so it is never downloaded again.
-    Return the Counter of matches listed, stored, downloaded and too old. Errors propagate.
+    Return the Counter of matches listed, stored, downloaded and too old, and of timelines
+    fetched. Errors propagate.
     """
 
     def record_old(match_id):
@@ -454,7 +515,7 @@ def crawl_region(
         old_ids_col.update_one({"_id": match_id}, {"$set": {"seen": window[0]}}, upsert=True)
 
     logger.info(f"=== Scan: {region_name} ({region_code}) ===")
-    counts = Counter(listed=0, stored=0, downloaded=0, too_old=0)
+    counts = Counter(listed=0, stored=0, downloaded=0, too_old=0, timelines=0)
     # Tiered fallback: Challenger → Grandmaster → Master → Database → Pro Players
     entries = []
 
@@ -593,6 +654,16 @@ def crawl_region(
 
                 # Store only essential fields to reduce storage usage
                 slimmed = slim_match(match_detail, region_code)
+                try:
+                    puuids = {p["puuid"] for p in slimmed["info"]["participants"]}
+                    slimmed["timeline"] = fetch_timeline(
+                        watcher, region_code, match_id, puuids, valid_items
+                    )
+                    counts["timelines"] += slimmed["timeline"] is not None
+                except RiotAuthError:
+                    raise
+                except Exception as e:  # noqa: BLE001 - store the match, a later run retries
+                    logger.warning(f"  No timeline for {match_id}: {e}")
 
                 try:
                     matches_col.insert_one(slimmed)
@@ -610,12 +681,13 @@ def crawl_region(
             logger.error(f"Player error: {e}")
     logger.info(
         f"{region_name}: {counts['listed']} listed, {counts['stored']} already stored, "
-        f"{counts['downloaded']} downloaded, {counts['too_old']} recorded as too old."
+        f"{counts['downloaded']} downloaded, {counts['too_old']} recorded as too old, "
+        f"{counts['timelines']} timelines fetched."
     )
     return counts
 
 
-def crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count):
+def crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count, valid_items=None):
     """Scan every region in REGIONS at the same time, one thread per region.
 
     Riot rate-limits per routing host, so the regions do not slow each other down.
@@ -638,6 +710,7 @@ def crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count)
                 player_count,
                 region_code,
                 region_name,
+                valid_items,
             )
             result.update(ok=True, downloaded=counts["downloaded"])
         except RiotAuthError as e:
@@ -707,6 +780,38 @@ def refetch_incomplete(watcher, matches_col, window):
             logger.error(f"  Could not download {match_id} again: {e}")
     logger.info(f"Downloaded {replaced} stored matches again with their newer fields.")
     return replaced
+
+
+def fetch_missing_timelines(watcher, matches_col, patch, valid_items):
+    """Fetch the timeline of stored matches of patch that have none; return the number fetched.
+
+    A match without a "timeline" field was never fetched; None marks one Riot reported not
+    found, which is not asked for again. A match whose request fails stays without one.
+    RiotAuthError propagates.
+    """
+    docs = matches_col.find(
+        {"timeline": {"$exists": False}},
+        {"_region": 1, "metadata.matchId": 1, "info.gameVersion": 1, "info.participants.puuid": 1},
+    )
+    missing = [d for d in docs if get_short_version(d.get("info", {}).get("gameVersion")) == patch]
+    fetched = failed = 0
+    for d in missing:
+        match_id = d["metadata"]["matchId"]
+        try:
+            puuids = {p.get("puuid") for p in d["info"].get("participants", [])}
+            timeline = fetch_timeline(watcher, d["_region"], match_id, puuids, valid_items)
+            matches_col.update_one({"metadata.matchId": match_id}, {"$set": {"timeline": timeline}})
+            fetched += timeline is not None
+        except RiotAuthError:
+            raise
+        except Exception as e:  # noqa: BLE001 - leave it for a later run, try the next match
+            failed += 1
+            logger.error(f"  Could not fetch the timeline of {match_id}: {e}")
+    logger.info(
+        f"Fetched {fetched} timelines of stored matches; {failed} matches of patch {patch} "
+        "still without a timeline."
+    )
+    return fetched
 
 
 # --- 7. ANALYSIS (pure: stored matches in, data.json structure out) ---
@@ -1143,11 +1248,15 @@ def main():
     # On failure return before the purge and before writing data.json, so the workflow stops
     # and the published site keeps its last good data.
     try:
-        results = crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count)
+        results = crawl(
+            watcher, riot_watcher, matches_col, old_ids_col, window, player_count, valid_items
+        )
         regions_ok = sum(r["ok"] for r in results.values())
         # The purge after this deletes refreshed matches whose queueId is not 420.
         if window and regions_ok:
             refetch_incomplete(watcher, matches_col, window)
+            # After the refetch: a replaced document has lost its timeline.
+            fetch_missing_timelines(watcher, matches_col, window[0], valid_items)
     except RiotAuthError as e:
         logger.error(f"{e}. Check the RIOT_API_KEY secret; data.json not written.")
         return 1

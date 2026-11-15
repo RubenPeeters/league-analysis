@@ -674,8 +674,11 @@ class FakeCollection:
         return SimpleNamespace(deleted_count=len(gone))
 
 
-def fake_watcher(failing_regions=(), status=500, lists=None, versions=None, calls=None):
-    """lists: region -> match ids listed; versions: match id -> game version (default 15.22)."""
+def fake_watcher(
+    failing_regions=(), status=500, lists=None, versions=None, calls=None, timeline=None
+):
+    """lists: region -> match ids listed; versions: match id -> game version (default 15.22);
+    timeline: function (region, match id) -> timeline (default: one without events)."""
     lists = lists or {}
     versions = versions or {}
 
@@ -697,14 +700,22 @@ def fake_watcher(failing_regions=(), status=500, lists=None, versions=None, call
             version=versions.get(match_id, "15.22.1"),
         )
         m["metadata"]["matchId"] = match_id
+        m["info"]["participants"][0]["puuid"] = "pu1"
         m["info"].update(gameDuration=1800, queueId=420)
         return m
+
+    def empty_timeline(region, match_id):
+        return {"info": {"participants": [{"participantId": 1, "puuid": "pu1"}], "frames": []}}
 
     return SimpleNamespace(
         league=SimpleNamespace(
             challenger_by_queue=ladder, grandmaster_by_queue=ladder, masters_by_queue=ladder
         ),
-        match=SimpleNamespace(matchlist_by_puuid=matchlist, by_id=by_id),
+        match=SimpleNamespace(
+            matchlist_by_puuid=matchlist,
+            by_id=by_id,
+            timeline_by_match=timeline or empty_timeline,
+        ),
     )
 
 
@@ -863,10 +874,11 @@ def test_rejected_key_in_one_region_fails_the_run(monkeypatch, tmp_path):
 def test_crawl_counts_requests_and_downloads_per_region(caplog):
     caplog.set_level("INFO")
     results = crawl_regions(fake_watcher(("kr",)))
-    # euw1: challenger ladder, match list, one match; kr: only the failing ladder request.
+    # euw1: challenger ladder, match list, one match and its timeline; kr: only the failing
+    # ladder request.
     assert {k: (r["requests"], r["downloaded"]) for k, r in results.items()} == {
         "kr": (1, 0),
-        "euw1": (3, 1),
+        "euw1": (4, 1),
     }
     assert all(r["seconds"] >= 0 for r in results.values())
     assert {rec.threadName for rec in caplog.records if "Scan" in rec.message} == {"kr", "euw1"}
@@ -881,6 +893,129 @@ def test_insert_error_other_than_duplicate_is_logged(monkeypatch, tmp_path, capl
     assert code == 0
     assert "Could not save euw1_1: disk full" in caplog.text
     assert "Could not save kr_1" not in caplog.text
+
+
+# --- Match timelines ---
+
+
+def ev(kind, pid, t, **fields):
+    return {"type": kind, "participantId": pid, "timestamp": t, **fields}
+
+
+# Timeline participant ids deliberately differ from the match's participant order.
+TIMELINE = {
+    "info": {
+        "participants": [
+            {"participantId": 1, "puuid": "pu2"},
+            {"participantId": 2, "puuid": "pu1"},
+            {"participantId": 3, "puuid": "not-in-match"},
+        ],
+        "frames": [
+            {
+                "events": [
+                    ev("ITEM_PURCHASED", 2, 100, itemId=1055),  # starter, not a valid item
+                    ev("ITEM_PURCHASED", 2, 900, itemId=3031),
+                    ev("ITEM_PURCHASED", 2, 950, itemId=3006),
+                    ev("ITEM_UNDO", 2, 960, beforeId=3006, afterId=0, goldGain=1000),
+                    ev("SKILL_LEVEL_UP", 2, 1000, skillSlot=1, levelUpType="NORMAL"),
+                    ev("SKILL_LEVEL_UP", 2, 1100, skillSlot=4, levelUpType="EVOLVE"),
+                    ev("ITEM_PURCHASED", 1, 1200, itemId=3089),
+                    ev("ITEM_PURCHASED", 3, 1200, itemId=3089),
+                ]
+            },
+            {
+                "events": [
+                    ev("ITEM_SOLD", 2, 2000, itemId=3031),
+                    ev("ITEM_SOLD", 1, 2100, itemId=3089),
+                    ev("ITEM_UNDO", 1, 2110, beforeId=0, afterId=3089, goldGain=-2000),
+                    ev("WARD_PLACED", 2, 2200),
+                ]
+            },
+        ],
+    }
+}
+
+
+def test_slim_timeline_applies_undo_keeps_sales_and_drops_evolves():
+    slim = main.slim_timeline(TIMELINE, {"pu1", "pu2"}, {3031, 3006, 3089})
+    assert slim == {
+        "pu1": {
+            "items": [
+                {"t": 900, "e": "buy", "id": 3031},
+                {"t": 2000, "e": "sell", "id": 3031},
+            ],
+            "skills": [{"t": 1000, "slot": 1}],
+        },
+        # Matched by puuid: participant 1 of the timeline is pu2; the undone sale is gone.
+        "pu2": {"items": [{"t": 1200, "e": "buy", "id": 3089}], "skills": []},
+    }
+
+
+def test_crawl_stores_the_slim_timeline_with_the_match():
+    def timeline(region, match_id):
+        return {
+            "info": {
+                "participants": [{"participantId": 1, "puuid": "pu1"}],
+                "frames": [{"events": [ev("ITEM_PURCHASED", 1, 5, itemId=3031)]}],
+            }
+        }
+
+    col = FakeCollection()
+    main.crawl(
+        fake_watcher(("kr",), timeline=timeline),
+        SimpleNamespace(),
+        col,
+        FakeCollection(),
+        ["15.22"],
+        1,
+        {3031},
+    )
+    [doc] = col.docs
+    assert doc["timeline"] == {"pu1": {"items": [{"t": 5, "e": "buy", "id": 3031}], "skills": []}}
+
+
+def test_failed_timeline_leaves_match_stored_and_a_later_run_fetches_it(monkeypatch, tmp_path):
+    def broken(region, match_id):
+        raise api_error(500)
+
+    col = FakeCollection()
+    code, _, _ = run_main(monkeypatch, tmp_path, fake_watcher(timeline=broken), col)
+    assert code == 0
+    assert sorted(d["metadata"]["matchId"] for d in col.docs) == ["euw1_1", "kr_1"]
+    assert all("timeline" not in d for d in col.docs)
+    calls = []
+    code, _, _ = run_main(monkeypatch, tmp_path, fake_watcher(calls=calls), col)
+    assert code == 0 and calls == []  # matches not downloaded again, only their timelines
+    assert all(d["timeline"] == {"pu1": {"items": [], "skills": []}} for d in col.docs)
+
+
+def test_timeline_not_found_is_marked_and_not_asked_again(monkeypatch, tmp_path):
+    asked = []
+
+    def gone(region, match_id):
+        asked.append(match_id)
+        raise api_error(404)
+
+    col = FakeCollection()
+    run_main(monkeypatch, tmp_path, fake_watcher(timeline=gone), col)
+    assert all(d["timeline"] is None for d in col.docs)
+    asked.clear()
+    run_main(monkeypatch, tmp_path, fake_watcher(timeline=gone), col)
+    assert asked == []
+
+
+def test_missing_timelines_of_previous_patches_are_not_fetched():
+    col = FakeCollection([stored("prev", "15.21.1"), stored("cur", "15.22.1")])
+    assert main.fetch_missing_timelines(fake_watcher(), col, "15.22", None) == 1
+    assert [("timeline" in d) for d in col.docs] == [False, True]
+
+
+def test_rejected_key_on_timeline_stops_the_run(monkeypatch, tmp_path):
+    def rejected(region, match_id):
+        raise api_error(403)
+
+    code, col, out = run_main(monkeypatch, tmp_path, fake_watcher(timeline=rejected))
+    assert code != 0 and not out.exists() and col.docs == []
 
 
 # --- Data Dragon item selection ---
