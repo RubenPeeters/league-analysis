@@ -122,6 +122,7 @@ def test_slim_match_keeps_only_analysis_fields():
             "gameVersion": "15.22.1",
             "gameCreation": 123,
             "gameMode": "CLASSIC",
+            "queueId": 420,
             "teams": [{"teamId": 100, "bans": [{"championId": 5}], "objectives": {}}],
             "participants": [
                 {"puuid": "p", "championId": 1, "championName": "Annie", "item0": 3001, "gold": 9}
@@ -135,10 +136,12 @@ def test_slim_match_keeps_only_analysis_fields():
     assert set(slim["info"]) == {
         "gameVersion",
         "gameCreation",
+        "queueId",
         "gameDuration",
         "teams",
         "participants",
     }
+    assert slim["info"]["queueId"] == 420
     p = slim["info"]["participants"][0]
     assert "gold" not in p
     assert p["item0"] == 3001 and p["item5"] == 0
@@ -196,12 +199,13 @@ def stored(match_id, version, **info):
 def test_incomplete_matches_are_current_patch_without_game_duration():
     docs = [
         stored("old_format", "15.22.700.1"),
-        stored("new_format", "15.22.700.1", gameDuration=1800),
-        stored("new_format_no_duration", "15.22.700.1", gameDuration=None),
+        stored("no_queue", "15.22.700.1", gameDuration=1800),
+        stored("new_format", "15.22.700.1", gameDuration=1800, queueId=420),
+        stored("new_format_no_duration", "15.22.700.1", gameDuration=None, queueId=420),
         stored("old_patch", "15.21.400.1"),
         stored("prefix_patch", "15.2.1.1"),
     ]
-    assert incomplete_matches(docs, "15.22") == [("euw1", "old_format")]
+    assert incomplete_matches(docs, "15.22") == [("euw1", "old_format"), ("euw1", "no_queue")]
 
 
 class RefetchCollection:
@@ -607,58 +611,171 @@ def api_error(status):
     return ApiError(response=response)
 
 
+def field(doc, path):
+    for key in path.split("."):
+        doc = doc.get(key, {}) if isinstance(doc, dict) else {}
+    return doc
+
+
+def matches_query(doc, query):
+    """The few MongoDB operators main.py uses; a missing field reads as {}."""
+    for path, cond in query.items():
+        if path == "$or":
+            if not any(matches_query(doc, q) for q in cond):
+                return False
+            continue
+        value = field(doc, path)
+        if not isinstance(cond, dict):
+            cond = {"$eq": cond}
+        for op, arg in cond.items():
+            if op == "$eq":
+                ok = value == arg
+            elif op == "$in":
+                ok = value in arg
+            elif op == "$nin":
+                ok = value not in arg
+            else:  # $exists
+                ok = (value != {}) == arg
+            if not ok:
+                return False
+    return True
+
+
 class FakeCollection:
-    def __init__(self):
-        self.docs = []
+    def __init__(self, docs=()):
+        self.docs = [{"_id": f"oid{i}", **d} for i, d in enumerate(docs)]
         self.deletes = []
 
     def find(self, query=None, projection=None):
-        return list(self.docs) if not query else []
+        return [d for d in self.docs if matches_query(d, query or {})]
 
     def aggregate(self, pipeline):
         return []
 
     def insert_one(self, doc):
-        self.docs.append(doc)
+        self.docs.append({"_id": f"oid{len(self.docs)}", **doc})
+
+    def update_one(self, query, update, upsert=False):
+        hit = self.find(query)
+        if hit:
+            hit[0].update(update["$set"])
+        elif upsert:
+            self.docs.append({**query, **update["$set"]})
 
     def delete_many(self, query):
         self.deletes.append(query)
-        return SimpleNamespace(deleted_count=0)
+        gone = self.find(query)
+        self.docs = [d for d in self.docs if d not in gone]
+        return SimpleNamespace(deleted_count=len(gone))
 
 
-def fake_watcher(failing_regions=(), status=500):
+def fake_watcher(failing_regions=(), status=500, lists=None, versions=None, calls=None):
+    """lists: region -> match ids listed; versions: match id -> game version (default 15.22)."""
+    lists = lists or {}
+    versions = versions or {}
+
     def ladder(region, queue):
         if region in failing_regions:
             raise api_error(status)
         return {"entries": [{"puuid": f"pu-{region}", "leaguePoints": 1}]}
 
+    def matchlist(region, puuid, count, queue):
+        assert queue == 420
+        return lists.get(region, [f"{region}_1"])
+
     def by_id(region, match_id):
-        return match([player(1, "Garen", 100, "TOP")], region=region, version="15.22.1")
+        if calls is not None:
+            calls.append(match_id)
+        m = match(
+            [player(1, "Garen", 100, "TOP")],
+            region=region,
+            version=versions.get(match_id, "15.22.1"),
+        )
+        m["metadata"]["matchId"] = match_id
+        m["info"].update(gameDuration=1800, queueId=420)
+        return m
 
     return SimpleNamespace(
         league=SimpleNamespace(
             challenger_by_queue=ladder, grandmaster_by_queue=ladder, masters_by_queue=ladder
         ),
-        match=SimpleNamespace(
-            matchlist_by_puuid=lambda region, puuid, count: [f"{region}_1"], by_id=by_id
-        ),
+        match=SimpleNamespace(matchlist_by_puuid=matchlist, by_id=by_id),
     )
 
 
-def run_main(monkeypatch, tmp_path, watcher):
-    col = FakeCollection()
+# Data Dragon versions, newest first: with KEEP_PREVIOUS_PATCHES 2 the window is 15.22-15.20.
+VERSIONS = ["15.22.1", "15.21.1", "15.20.1", "15.19.1", "15.18.1"]
+
+
+def run_main(monkeypatch, tmp_path, watcher, col=None, old=None):
+    col = col if col is not None else FakeCollection()
+    old = old if old is not None else FakeCollection()
     monkeypatch.setenv("RIOT_API_KEY", "key")
     monkeypatch.setenv("MONGODB_URI", "uri")
     monkeypatch.setenv("PLAYER_COUNT", "1")
+    monkeypatch.delenv("KEEP_PREVIOUS_PATCHES", raising=False)
     monkeypatch.setattr(main, "load_dotenv", lambda: None)
     monkeypatch.setattr(main, "DATA_FOLDER", str(tmp_path))
     monkeypatch.setattr(main, "OUTPUT_FILE", str(tmp_path / "data.json"))
     monkeypatch.setattr(main, "HISTORY_FILE", str(tmp_path / "history.json"))
     monkeypatch.setattr(main, "LolWatcher", lambda key: watcher)
     monkeypatch.setattr(main, "RiotWatcher", lambda key: SimpleNamespace())
-    monkeypatch.setattr(main, "connect_db", lambda uri: col)
-    monkeypatch.setattr(main, "load_static_data", lambda: ("15.22.1", set(), None, set()))
+    monkeypatch.setattr(main, "connect_db", lambda uri: (col, old))
+    monkeypatch.setattr(main, "load_static_data", lambda: ("15.22.1", set(), None, set(), VERSIONS))
     return main.main(), col, tmp_path / "data.json"
+
+
+def test_retention_window_is_current_and_previous_patches():
+    versions = ["15.22.1", "15.21.2", "15.21.1", "15.20.1", "15.2.1"]
+    assert main.retention_window(versions, 2) == ["15.22", "15.21", "15.20"]
+    assert main.is_older("15.2", ["15.22", "15.21", "15.20"])
+    assert not main.is_older("15.20", ["15.22", "15.21", "15.20"])
+
+
+def test_second_run_over_the_same_lists_requests_no_match(monkeypatch, tmp_path):
+    lists = {"kr": ["kr_3", "kr_2", "kr_1", "kr_0"], "euw1": ["euw1_1"]}
+    versions = {"kr_2": "15.20.5", "kr_1": "15.19.1", "kr_0": "15.19.1"}
+    calls = []
+    watcher = fake_watcher(lists=lists, versions=versions, calls=calls)
+    col, old = FakeCollection(), FakeCollection()
+    run_main(monkeypatch, tmp_path, watcher, col, old)
+    # kr_2 is inside the window and stored; kr_1 is outside, recorded, and ends the scan.
+    assert calls == ["kr_3", "kr_2", "kr_1", "euw1_1"]
+    assert sorted(d["metadata"]["matchId"] for d in col.docs) == ["euw1_1", "kr_2", "kr_3"]
+    assert old.docs == [{"_id": "kr_1", "seen": "15.22"}]
+    calls.clear()
+    code, _, _ = run_main(monkeypatch, tmp_path, watcher, col, old)
+    assert code == 0 and calls == []
+    assert len(col.docs) == 3 and len(old.docs) == 1
+
+
+def test_data_json_ignores_stored_matches_of_previous_patches():
+    current = match([player(1, "Garen", 100, "TOP")], version="15.22.1")
+    previous = match([player(2, "Darius", 100, "TOP")], version="15.21.1")
+    data = build([current, previous])
+    assert data["meta"]["total_games"] == 1
+    assert [c["name"] for c in data["regions"]["euw1"]["TOP"]] == ["Garen"]
+
+
+def test_purge_removes_non_ranked_and_out_of_window_matches_and_stale_records():
+    def doc(match_id, version, **info):
+        return {"metadata": {"matchId": match_id}, "info": {"gameVersion": version, **info}}
+
+    col = FakeCollection(
+        [
+            doc("ranked", "15.22.1", queueId=420),
+            doc("no_queue", "15.22.1"),
+            doc("flex", "15.22.1", queueId=440),
+            doc("previous", "15.20.1", queueId=420),
+            doc("too_old", "15.19.1", queueId=420),
+            doc("prefix", "15.2.1", queueId=420),
+        ]
+    )
+    old = FakeCollection()
+    old.docs = [{"_id": "seen_now", "seen": "15.21"}, {"_id": "stale", "seen": "15.19"}]
+    main.purge_old_patches(col, old, ["15.22", "15.21", "15.20"])
+    assert [d["metadata"]["matchId"] for d in col.docs] == ["ranked", "no_queue", "previous"]
+    assert [d["_id"] for d in old.docs] == ["seen_now"]
 
 
 def test_rejected_key_stops_before_purge_and_write(monkeypatch, tmp_path, caplog):
