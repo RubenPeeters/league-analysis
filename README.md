@@ -13,13 +13,15 @@ Live at https://rubenpeeters.github.io/league-analysis/
 
 1. takes the top `PLAYER_COUNT` players per region from the Challenger ladder (topped up
    from Grandmaster and Master if it is short) via the Riot API;
-2. fetches their last 100 matches, keeps those on the current patch, and stores them in
-   MongoDB Atlas (matches from older patches are purged);
-3. aggregates the stored matches into `data/data.json`, which the front end in `ui/` reads.
+2. fetches their last 100 ranked solo matches and stores, in MongoDB Atlas, those on the
+   current patch or the `KEEP_PREVIOUS_PATCHES` (default 2) patches before it; older matches
+   are recorded by id so they are not downloaded again, and purged once outside that window;
+3. aggregates the stored current-patch matches into `data/data.json`, which the front end in
+   `ui/` reads.
 
 It also keeps `data/history.json`, the per-patch archive behind the meta-over-patches view:
 one entry per patch with, per region and role, every champion picked and its games, pick,
-win and ban rate. MongoDB is purged at every patch, so each run replaces the current patch's
+win and ban rate. MongoDB keeps only a few patches, so each run replaces the current patch's
 entry and leaves the others alone. The file lives on the `data` branch; the workflow copies it
 into `data/` before the run and commits it back afterwards. Entries for 16.2 to 16.20 are a
 backfill (`"source": "backfill"`, top 15 per role, estimated game counts).
@@ -36,6 +38,7 @@ Pages serves. `data/` is not tracked on `main` or `dev`.
 - `RIOT_API_KEY` (required)
 - `MONGODB_URI` (required)
 - `PLAYER_COUNT`
+- `KEEP_PREVIOUS_PATCHES` (default 2)
 - `LOG_LEVEL`
 
 Locally they are read from a `.env` file in the repo root. In CI, `RIOT_API_KEY` and
