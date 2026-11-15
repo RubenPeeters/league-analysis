@@ -80,6 +80,7 @@ FALLBACK_PRO_PLAYERS = {
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FOLDER = os.path.join(SCRIPT_DIR, "..", "data")
 OUTPUT_FILE = os.path.join(DATA_FOLDER, "data.json")
+HISTORY_FILE = os.path.join(DATA_FOLDER, "history.json")
 
 
 # --- 2. DATABASE ---
@@ -497,7 +498,8 @@ def summarize_match(m, champ_id_to_name, tank_champs):
 def aggregate(
     match_list, role_filter, region_code, champ_id_to_name, valid_items, player_performance
 ):
-    """Champion stats for one role; adds each player's games to player_performance."""
+    """Stats of every champion picked or banned in one role, by pick rate; adds each player's
+    games to player_performance."""
     stats = {}
     total_matches = len(match_list)
     if total_matches == 0:
@@ -647,7 +649,7 @@ def aggregate(
                 }
             )
 
-    return sorted(results, key=lambda x: x["pick_rate"], reverse=True)[:15]
+    return sorted(results, key=lambda x: x["pick_rate"], reverse=True)
 
 
 def build_leaderboards(player_performance):
@@ -709,7 +711,7 @@ def build_frontend_data(
                 champ_id_to_name,
                 valid_items,
                 player_performance,
-            )
+            )[:15]
             for r in VALID_ROLES
         }
 
@@ -717,7 +719,83 @@ def build_frontend_data(
     return frontend_data
 
 
-# --- 8. ENTRY POINT ---
+# --- 8. PER-PATCH ARCHIVE (history.json) ---
+def patch_regions(matches, patch):
+    """Per region: exact match count on patch and every champion picked per role."""
+    # Mirrors build_frontend_data, so ban rates resolve the same way as in data.json.
+    champ_id_to_name = {}
+    regions = {}
+    for region_code, _ in REGIONS:
+        region_matches = [
+            s
+            for s in (
+                summarize_match(m, champ_id_to_name, set())
+                for m in matches
+                if m.get("_region") == region_code
+            )
+            if s["patch"] == patch
+        ]
+        regions[region_code] = {
+            "games": len(region_matches),
+            "games_estimated": False,
+            "roles": {
+                r: [
+                    {
+                        "name": c["name"],
+                        "games": c["count"],
+                        "pick_rate": c["pick_rate"],
+                        "win_rate": c["win_rate"],
+                        "ban_rate": c["ban_rate"],
+                    }
+                    for c in aggregate(region_matches, r, region_code, champ_id_to_name, None, {})
+                    if c["count"] > 0
+                ]
+                for r in VALID_ROLES
+            },
+        }
+    return regions
+
+
+def update_history(history, patch, regions, snapshot_date):
+    """Return history with the entry of patch replaced or added; other entries untouched."""
+    if sum(r["games"] for r in regions.values()) == 0:
+        return history
+    entry = {
+        "patch": patch,
+        "snapshot_date": snapshot_date,
+        "source": "generator",
+        "complete": True,
+        "regions": regions,
+    }
+    patches = [p for p in history["patches"] if p["patch"] != patch] + [entry]
+    patches.sort(key=lambda p: tuple(int(x) for x in p["patch"].split(".")))
+    return {**history, "patches": patches}
+
+
+def load_history(path):
+    """Read history.json; raise ValueError if it is not a schema 1 archive."""
+    if not os.path.exists(path):
+        return {"schema": 1, "patches": []}
+    with open(path) as f:
+        history = json.load(f)
+    if (
+        not isinstance(history, dict)
+        or history.get("schema") != 1
+        or not isinstance(history.get("patches"), list)
+    ):
+        raise ValueError(f"{path} is not a schema 1 history file")
+    return history
+
+
+def write_history(path, history):
+    # Write then rename: history.json is the only copy of past patches.
+    tmp = f"{path}.tmp"
+    with open(tmp, "w") as f:
+        json.dump(history, f, separators=(",", ":"))
+    os.replace(tmp, path)
+
+
+# --- 9. ENTRY POINT ---
 def main():
     load_dotenv()
     log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -745,6 +823,13 @@ def main():
 
     target_patch = get_short_version(latest_ver) if latest_ver else None
 
+    # Read before anything is written: an unreadable archive must stop the run, not be replaced.
+    try:
+        history = load_history(HISTORY_FILE)
+    except (OSError, ValueError) as e:
+        logger.error(f"Cannot read history.json: {e}. Nothing written.")
+        return 1
+
     # On failure return before the purge and before writing data.json, so the workflow stops
     # and the published site keeps its last good data.
     try:
@@ -761,17 +846,29 @@ def main():
     purge_old_patches(matches_col, target_patch)
 
     logger.info("Generating Frontend JSON...")
+    matches = list(matches_col.find({}))
+    now = datetime.now(timezone.utc)
     frontend_data = build_frontend_data(
-        list(matches_col.find({})),
+        matches,
         latest_ver,
         player_count,
         tank_champs,
         valid_items,
-        datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        now.strftime("%Y-%m-%d %H:%M UTC"),
     )
 
     with open(OUTPUT_FILE, "w") as f:
         json.dump(frontend_data, f)
+    if target_patch:
+        write_history(
+            HISTORY_FILE,
+            update_history(
+                history,
+                target_patch,
+                patch_regions(matches, target_patch),
+                now.strftime("%Y-%m-%d"),
+            ),
+        )
     logger.info(f"Complete. New Matches: {new_count}")
     return 0
 

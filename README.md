@@ -17,6 +17,13 @@ Live at https://rubenpeeters.github.io/league-analysis/
    MongoDB Atlas (matches from older patches are purged);
 3. aggregates the stored matches into `data/data.json`, which the front end in `ui/` reads.
 
+It also keeps `data/history.json`, the per-patch archive behind the meta-over-patches view:
+one entry per patch with, per region and role, every champion picked and its games, pick,
+win and ban rate. MongoDB is purged at every patch, so each run replaces the current patch's
+entry and leaves the others alone. The file lives on the `data` branch; the workflow copies it
+into `data/` before the run and commits it back afterwards. Entries for 16.2 to 16.20 are a
+backfill (`"source": "backfill"`, top 15 per role, estimated game counts).
+
 ## How it is published
 
 `.github/workflows/update_data.yml` runs every 6 hours, on manual dispatch, and on pushes to
