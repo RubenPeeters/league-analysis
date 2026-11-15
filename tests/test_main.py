@@ -623,7 +623,7 @@ def field(doc, path):
 
 
 def matches_query(doc, query):
-    """The few MongoDB operators main.py uses; a missing field reads as {}."""
+    """The few MongoDB operators main.py and lookup.py use; a missing field reads as {}."""
     for path, cond in query.items():
         if path == "$or":
             if not any(matches_query(doc, q) for q in cond):
@@ -634,7 +634,9 @@ def matches_query(doc, query):
             cond = {"$eq": cond}
         for op, arg in cond.items():
             if op == "$eq":
-                ok = value == arg
+                ok = value == arg or (isinstance(value, list) and arg in value)
+            elif op == "$gte":
+                ok = value != {} and value is not None and value >= arg
             elif op == "$in":
                 ok = value in arg
             elif op == "$nin":

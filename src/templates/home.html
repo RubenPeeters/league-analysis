@@ -1,6 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
-<p>Logged in as <span class="highlight">{{ user.name }}</span>.</p>
-<p>The player lookup is not available yet.</p>
-<p><a class="page-link" href="/logout">Log out</a></p>
+<p>Logged in as <span class="highlight">{{ user.name }}</span>. <a class="page-link" href="/logout">Log out</a></p>
+<form method="post" action="/lookup">
+    <p>
+        <label for="riot_id">Riot ID</label>
+        <input id="riot_id" name="riot_id" placeholder="name#tag" required maxlength="22"
+            value="{{ form.riot_id if form else '' }}">
+        <label for="region">Region</label>
+        <select id="region" name="region">
+            {% for code, name in regions.items() %}
+            <option value="{{ code }}" {% if form and form.region == code %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">Look up</button>
+    </p>
+</form>
+{% if error %}<p role="alert">{{ error }}</p>{% endif %}
+<p class="small-text">The lookup downloads the player's ranked solo games of the last patches and compares their builds with the tracked top players. You can start {{ per_day }} lookups per 24 hours.</p>
+<h3>Your recent lookups</h3>
+{% if recent %}
+<ul>
+    {% for job in recent %}
+    <li><a class="page-link" href="/jobs/{{ job._id }}">{{ job.riot_id }} ({{ regions[job.region] }})</a>
+        {{ job.state }}, {{ job.created_at.strftime("%Y-%m-%d %H:%M") }} UTC</li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>None yet.</p>
+{% endif %}
 {% endblock %}
