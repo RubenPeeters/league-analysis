@@ -11,6 +11,11 @@ on:
 permissions:
   contents: write
 
+# One run at a time: runs share the Riot rate limit, the database and the data branch.
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -31,6 +36,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install riotwatcher python-dotenv requests "pymongo[srv]"
 
+      # 0. FETCH THE PER-PATCH ARCHIVE (the generator updates it; it lives on the data branch)
+      - name: Fetch history.json from data branch
+        run: |
+          git fetch --depth=1 origin data
+          mkdir -p data
+          git show FETCH_HEAD:history.json > data/history.json || rm -f data/history.json
+
       # 1. GENERATE FRESH DATA
       - name: Run Data Generator
         env:
@@ -48,8 +60,9 @@ jobs:
           git fetch --depth=1 origin data
           git worktree add --detach _data FETCH_HEAD
           cp data/data.json _data/data.json
+          if [ -f data/history.json ]; then cp data/history.json _data/history.json; fi
           cd _data
-          git add data.json
+          git add -A .
           # Only commit if there are changes
           git diff --staged --quiet || git commit -m "Auto-update data"
           git push origin HEAD:data
