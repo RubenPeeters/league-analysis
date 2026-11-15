@@ -85,46 +85,50 @@
     </div>
 
     <div class="detail-container hidden" id="detail-view">
-        <div class="detail-header">
+        <div class="cv-head">
             <button class="back-btn" onclick="closeDetailView()">← Back</button>
-
-            <div class="detail-content-wrapper">
-                <div class="detail-title-group">
-                    <img id="detail-img" src="" class="detail-champ-img">
-                    <div>
-                        <h2 id="detail-name">Champion</h2>
-                        <span class="detail-subtitle">Pro Performance Data</span>
-                    </div>
-                </div>
-
-                <div class="build-section">
-                    <span class="build-label">ITEMS IN FINAL INVENTORY (% OF GAMES)</span>
-                    <div class="item-row" id="detail-items">
-                    </div>
-                    <span class="build-label">BOOTS</span>
-                    <div class="item-row" id="detail-boots">
-                    </div>
-                    <span class="build-label">BUILD ORDER (GAMES WITH A TIMELINE)</span>
-                    <div id="detail-order">
-                    </div>
-                    <span class="build-label">SKILL ORDER</span>
-                    <div id="detail-skills">
-                    </div>
-                    <span class="build-label">RUNES (% OF GAMES WITH RUNE DATA)</span>
-                    <div id="detail-runes">
-                    </div>
-                    <span class="build-label">SUMMONER SPELLS</span>
-                    <div id="detail-spells">
-                    </div>
-                </div>
+            <img id="detail-img" src="" class="cv-champ" alt="">
+            <div class="cv-title">
+                <h2 id="detail-name">Champion</h2>
+                <span class="cv-sub" id="detail-sub"></span>
             </div>
+            <div class="cv-stats" id="detail-stats"></div>
+        </div>
 
-            <div id="context-builds" class="context-grid">
+        <div class="cv-grid">
+            <div class="cv-col">
+                <section class="cv-panel">
+                    <h3>Runes</h3>
+                    <div id="detail-runes"></div>
+                </section>
+                <section class="cv-panel">
+                    <h3>Spells and skills</h3>
+                    <div id="detail-spells"></div>
+                    <div id="detail-skills"></div>
+                </section>
+            </div>
+            <div class="cv-col">
+                <section class="cv-panel">
+                    <h3>Build path</h3>
+                    <div id="detail-order"></div>
+                </section>
+            </div>
+            <div class="cv-col">
+                <section class="cv-panel">
+                    <h3>Final items</h3>
+                    <div class="cv-tiles" id="detail-items"></div>
+                    <h3>Boots</h3>
+                    <div class="cv-tiles" id="detail-boots"></div>
+                </section>
+                <section class="cv-panel" id="panel-matchups">
+                    <h3>Changes by enemy team</h3>
+                    <div id="context-builds"></div>
+                </section>
             </div>
         </div>
 
         <div class="region-card">
-            <div class="region-header">TOP PERFORMING PLAYERS</div>
+            <div class="region-header" id="players-header">PLAYERS</div>
             <table id="table-players">
                 <thead>
                     <tr>
@@ -137,8 +141,10 @@
                 </thead>
                 <tbody></tbody>
             </table>
+            <button class="cv-more hidden" id="players-more"></button>
         </div>
     </div>
+    <div id="cv-tip" class="cv-tip" role="tooltip"></div>
 
     <div id="about-modal" class="modal-overlay" onclick="toggleModal()">
         <div class="modal-content" onclick="event.stopPropagation()">

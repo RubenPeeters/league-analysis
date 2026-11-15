@@ -7,3 +7,5 @@ __pycache__/
 data/
 _site/
 analysis/out/
+# forge visual review output
+.forge/

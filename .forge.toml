@@ -3,3 +3,4 @@
 base = "dev"           # PRs target this branch
 check = "make check"   # must pass locally before push; CI runs the same target
 required_checks = ["check"]   # CI job names that must report green before auto-merge
+screenshots = "make screenshots"   # visual review: PNGs for the reviewers each round
