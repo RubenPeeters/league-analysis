@@ -389,11 +389,12 @@ def matchup_cards(s):
 
 
 # --- 5. DB MAINTENANCE ---
-def purge_old_patches(matches_col, window):
+def purge_old_patches(matches_col, old_ids_col, window):
     """Delete matches older than the window or not ranked solo.
 
-    Id records in old_match_ids are never deleted: a player who drops off the ladder can
-    return patches later with the same list, and the records are a few bytes each.
+    Matches that aged out get an id record in old_match_ids first, so a player who was off
+    the ladder while they aged out does not download them again on return. Id records are
+    never deleted: such a player can return patches later, and the records are a few bytes.
     """
     if not window:
         logger.warning("Skipping DB cleanup: Could not determine current patch from Riot API.")
@@ -401,13 +402,21 @@ def purge_old_patches(matches_col, window):
     logger.info("--- DB MAINTENANCE ---")
     logger.info(f"Retention window: {', '.join(window)}.")
     try:
-        # Compared in Python: a regex cannot order patches, and "16.2" is a prefix of "16.22".
-        doomed = [
-            d["_id"]
-            for d in matches_col.find({}, {"info.gameVersion": 1, "info.queueId": 1})
-            if is_older(get_short_version(d.get("info", {}).get("gameVersion")), window)
-            or d.get("info", {}).get("queueId", RANKED_SOLO_QUEUE) != RANKED_SOLO_QUEUE
-        ]
+        doomed = []
+        for d in matches_col.find(
+            {}, {"metadata.matchId": 1, "info.gameVersion": 1, "info.queueId": 1}
+        ):
+            info = d.get("info", {})
+            # Compared in Python: a regex cannot order patches, and "16.2" is a prefix of "16.22".
+            if is_older(get_short_version(info.get("gameVersion")), window):
+                match_id = d.get("metadata", {}).get("matchId")
+                if match_id:
+                    old_ids_col.update_one(
+                        {"_id": match_id}, {"$set": {"seen": window[0]}}, upsert=True
+                    )
+                doomed.append(d["_id"])
+            elif info.get("queueId", RANKED_SOLO_QUEUE) != RANKED_SOLO_QUEUE:
+                doomed.append(d["_id"])
         matches_col.delete_many({"_id": {"$in": doomed}})
         logger.info(f"Purged {len(doomed)} matches older than the window or not ranked solo.")
     except Exception as e:  # noqa: BLE001 - a failed purge must not stop the run
@@ -1116,7 +1125,7 @@ def main():
         logger.error("Could not read the ladder for any region; data.json not written.")
         return 1
 
-    purge_old_patches(matches_col, window)
+    purge_old_patches(matches_col, old_ids_col, window)
     log_storage_size(matches_col)
 
     logger.info("Generating Frontend JSON...")

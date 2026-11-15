@@ -795,8 +795,26 @@ def test_purge_removes_non_ranked_and_out_of_window_matches_and_keeps_id_records
             doc("prefix", "15.2.1", queueId=420),
         ]
     )
-    main.purge_old_patches(col, ["15.22", "15.21", "15.20"])
+    old = FakeCollection()
+    main.purge_old_patches(col, old, ["15.22", "15.21", "15.20"])
     assert [d["metadata"]["matchId"] for d in col.docs] == ["ranked", "no_queue", "previous"]
+    assert old.docs == [{"_id": "too_old", "seen": "15.22"}, {"_id": "prefix", "seen": "15.22"}]
+
+
+def test_match_aging_out_while_its_player_is_away_is_not_downloaded_again(monkeypatch, tmp_path):
+    calls = []
+    watcher = fake_watcher(lists={"kr": ["kr_1"]}, versions={"kr_1": "15.22.1"}, calls=calls)
+    col, old = FakeCollection(), FakeCollection()
+    run_main(monkeypatch, tmp_path, watcher, col, old)
+    assert calls == ["kr_1", "euw1_1"]
+    # The player is off the ladder while kr_1 ages out of the window and is purged.
+    later = ["15.26.1", "15.25.1", "15.24.1", "15.23.1", "15.22.1"]
+    away = fake_watcher(lists={"kr": [], "euw1": []})
+    run_main(monkeypatch, tmp_path, away, col, old, versions=later)
+    assert col.docs == []
+    calls.clear()
+    run_main(monkeypatch, tmp_path, watcher, col, old, versions=later)
+    assert "kr_1" not in calls
 
 
 def test_rejected_key_stops_before_purge_and_write(monkeypatch, tmp_path, caplog):
