@@ -15,3 +15,8 @@ The repo is managed by forge: one issue, one branch, one PR into `dev`; `main` i
 
 The adoption commit did not touch `src/main.py`; it is excluded from ruff in `pyproject.toml` until it is restructured.
 **Why:** the script runs its database and API calls at import, so it could not be tested; changing it without tests was left to its own issue.
+
+## 2026-11-15: src/main.py restructured, still one file
+
+`src/main.py` does nothing at import; `main()` builds the clients, the collection and the Data Dragon data and passes them down. The crawler (`crawl`) is separate from the analysis (`build_frontend_data` and its helpers), which is pure. It stays one file at the same path, and is linted.
+**Why:** to make it testable (#2) without touching `update_data.yml`, which calls `python src/main.py` and which the forge bot cannot change. Tests import it through `pythonpath = ["src"]` in `pyproject.toml`.
