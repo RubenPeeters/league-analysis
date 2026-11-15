@@ -9,7 +9,6 @@ from test_main import (
     LEGENDARY,
     FakeCollection,
     api_error,
-    build,
     buys,
     ev,
     fake_watcher,
@@ -181,8 +180,7 @@ def game(
     return m
 
 
-def analyze(matches, ladder=None):
-    ladder = ladder if ladder is not None else {"regions": {}}
+def analyze(matches, ladder=()):
     result = player.analyze_player(matches, "pu-Me", ladder, LEGENDARY | BOOTS, BOOTS)
     json.dumps(result)
     return result["champions"]
@@ -229,9 +227,16 @@ def test_lane_opponent_needs_three_games_and_ignores_other_roles():
     }
 
 
-def test_lane_opponent_without_three_other_games_has_no_item_differences():
-    (garen,) = analyze([game(opp="Darius", items=(3004,))] * 3 + [game(opp="Sett")] * 2)
-    assert [(o["champion"], o["items"]) for o in garen["opponents"]] == [("Darius", [])]
+def test_lane_opponent_item_differences_need_only_one_other_game():
+    (garen,) = analyze([game(opp="Darius", items=(3004,))] * 4 + [game(opp="Sett")])
+    (darius,) = garen["opponents"]
+    assert darius["other_games"] == 1
+    assert [(r["id"], r["share"], r["other_share"]) for r in darius["items"]] == [
+        (3001, 0.0, 100.0),
+        (3004, 100.0, 0.0),
+    ]
+    (garen,) = analyze([game(opp="Darius", items=(3004,))] * 5)
+    assert garen["opponents"][0]["items"] == []
 
 
 def test_ladder_shares_where_the_ladder_has_the_champion():
@@ -244,9 +249,7 @@ def test_ladder_shares_where_the_ladder_has_the_champion():
             p["puuid"]: {"items": buys((p["item0"], 1)), "skills": []}
             for p in m["info"]["participants"]
         }
-    ladder = build(ladder_games, valid_items=LEGENDARY | BOOTS, boots=BOOTS)
-
-    garen, darius = analyze([game()] * 6 + [game(champ="Darius", opp="Garen")] * 5, ladder)
+    garen, darius = analyze([game()] * 6 + [game(champ="Darius", opp="Garen")] * 5, ladder_games)
     assert garen["ladder"] == {"games": 4, "item_games": 4, "rune_games": 4, "timeline_games": 4}
     assert garen["items"][0]["ladder_share"] == 75.0
     assert garen["runes"][0]["ladder_share"] == 100.0
@@ -264,3 +267,25 @@ def test_regions_are_kept_apart_and_other_players_have_no_result():
     euw, korea = analyze([game()] * 6 + kr)
     assert [(c["region"], c["games"]) for c in (euw, korea)] == [("euw1", 6), ("kr", 5)]
     assert player.analyze_player([game()] * 5, "pu-X", {}) == {"puuid": "pu-X", "champions": []}
+
+
+def test_ladder_shares_beyond_the_displayed_rows_and_zero_when_never_seen():
+    six, two = (4001, 4002, 4003, 4004, 4005, 4006), (4007, 4008)
+    builds = [six] * 3 + [two] * 3 + [(4008, 4009)]
+    keystones = [8005, 8005, 8008, 8008, 8021, 8021, 8010]
+    ladder_games = []
+    for n, (items, keystone) in enumerate(zip(builds, keystones)):
+        p = participant(1, "Garen", 100, "TOP", items=items, name=f"L{n}")
+        p["perks"] = page(keystone=keystone)
+        m = match([p])
+        m["timeline"] = {p["puuid"]: {"items": buys((items[0], 1)), "skills": []}}
+        ladder_games.append(m)
+
+    matches = [game(items=(4009, 4010), keystone=8010)] * 5
+    (garen,) = player.analyze_player(matches, "pu-Me", ladder_games)["champions"]
+    items = {r["id"]: r["ladder_share"] for r in garen["items"]}
+    assert (items[4009], items[4010]) == (14.3, 0.0)
+    assert garen["runes"][0]["ladder_share"] == 14.3
+    assert garen["first_items"] == [
+        {"id": 4009, "games": 5, "share": 100.0, "win_rate": 100.0, "ladder_share": 0.0}
+    ]
