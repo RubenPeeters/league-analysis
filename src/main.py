@@ -389,10 +389,11 @@ def matchup_cards(s):
 
 
 # --- 5. DB MAINTENANCE ---
-def purge_old_patches(matches_col, old_ids_col, window):
-    """Delete matches older than the window or not ranked solo, and stale id records.
+def purge_old_patches(matches_col, window):
+    """Delete matches older than the window or not ranked solo.
 
-    An id record goes once no list returned it during any patch of the window.
+    Id records in old_match_ids are never deleted: a player who drops off the ladder can
+    return patches later with the same list, and the records are a few bytes each.
     """
     if not window:
         logger.warning("Skipping DB cleanup: Could not determine current patch from Riot API.")
@@ -408,11 +409,7 @@ def purge_old_patches(matches_col, old_ids_col, window):
             or d.get("info", {}).get("queueId", RANKED_SOLO_QUEUE) != RANKED_SOLO_QUEUE
         ]
         matches_col.delete_many({"_id": {"$in": doomed}})
-        records = old_ids_col.delete_many({"seen": {"$nin": window}})
-        logger.info(
-            f"Purged {len(doomed)} matches older than the window or not ranked solo, "
-            f"and {records.deleted_count} id records."
-        )
+        logger.info(f"Purged {len(doomed)} matches older than the window or not ranked solo.")
     except Exception as e:  # noqa: BLE001 - a failed purge must not stop the run
         logger.error(f"Cleanup Error: {e}")
 
@@ -438,7 +435,7 @@ def crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count)
     regions_ok = 0
 
     def record_old(match_id):
-        # seen: the purge drops a record once no list returned it during the window.
+        # seen: the last patch a list returned it, to tell live records from dormant ones.
         old_ids_col.update_one({"_id": match_id}, {"$set": {"seen": window[0]}}, upsert=True)
 
     for region_code, region_name in REGIONS:
@@ -623,18 +620,18 @@ def crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count)
     return new_count, regions_ok
 
 
-def incomplete_matches(docs, target_patch):
-    """(region, matchId) of stored current-patch matches slimmed before gameDuration or
+def incomplete_matches(docs, window):
+    """(region, matchId) of stored matches inside the window slimmed before gameDuration or
     queueId was kept."""
     return [
         (d["_region"], d["metadata"]["matchId"])
         for d in docs
         if not {"gameDuration", "queueId"} <= d.get("info", {}).keys()
-        and get_short_version(d.get("info", {}).get("gameVersion")) == target_patch
+        and not is_older(get_short_version(d.get("info", {}).get("gameVersion")), window)
     ]
 
 
-def refetch_incomplete(watcher, matches_col, target_patch):
+def refetch_incomplete(watcher, matches_col, window):
     """Download incomplete stored matches again and replace them; return the number replaced.
 
     Each match is tried once; one that cannot be fetched stays as it is. RiotAuthError propagates.
@@ -655,7 +652,7 @@ def refetch_incomplete(watcher, matches_col, target_patch):
         },
     )
     replaced = 0
-    for region_code, match_id in incomplete_matches(docs, target_patch):
+    for region_code, match_id in incomplete_matches(docs, window):
         try:
             match_detail = smart_request(watcher.match.by_id, region_code, match_id)
             if not match_detail:
@@ -1109,8 +1106,9 @@ def main():
         new_count, regions_ok = crawl(
             watcher, riot_watcher, matches_col, old_ids_col, window, player_count
         )
-        if target_patch and regions_ok:
-            refetch_incomplete(watcher, matches_col, target_patch)
+        # The purge after this deletes refreshed matches whose queueId is not 420.
+        if window and regions_ok:
+            refetch_incomplete(watcher, matches_col, window)
     except RiotAuthError as e:
         logger.error(f"{e}. Check the RIOT_API_KEY secret; data.json not written.")
         return 1
@@ -1118,7 +1116,7 @@ def main():
         logger.error("Could not read the ladder for any region; data.json not written.")
         return 1
 
-    purge_old_patches(matches_col, old_ids_col, window)
+    purge_old_patches(matches_col, window)
     log_storage_size(matches_col)
 
     logger.info("Generating Frontend JSON...")
