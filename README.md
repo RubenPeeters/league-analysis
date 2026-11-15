@@ -39,6 +39,7 @@ Pages serves. `data/` is not tracked on `main` or `dev`.
 - `MONGODB_URI` (required)
 - `PLAYER_COUNT`
 - `KEEP_PREVIOUS_PATCHES` (default 2)
+- `PLAYER_MATCH_COUNT` (default 100; `src/player.py` only)
 - `LOG_LEVEL`
 
 Locally they are read from a `.env` file in the repo root. In CI, `RIOT_API_KEY` and
@@ -49,6 +50,7 @@ Locally they are read from a `.env` file in the repo root. In CI, `RIOT_API_KEY`
 ```sh
 uv sync
 uv run python src/main.py        # writes data/data.json
+uv run python src/player.py "name#tag" euw1   # stores one player's ranked matches
 python -m http.server            # serve the repo root
 ```
 
