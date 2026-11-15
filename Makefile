@@ -1,4 +1,4 @@
-.PHONY: install check lint test
+.PHONY: install check lint test screenshots
 install:
 	uv sync
 lint:
@@ -7,3 +7,6 @@ lint:
 test:
 	uv run pytest -q
 check: install lint test
+# Visual review: PNGs of every page in .forge/screenshots/ (see scripts/screenshots.py).
+screenshots: install
+	uv run python scripts/screenshots.py

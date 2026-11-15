@@ -553,3 +553,102 @@ tbody tr a { position: relative; z-index: 2; }
 .summary-box li { display: flex; align-items: center; gap: 8px; padding: 3px 0; break-inside: avoid; }
 .summary-box p { padding: 0 15px; }
 .patch-label { color: var(--muted); font-family: 'Consolas', monospace; min-width: 3em; }
+
+/* CHAMPION VIEW (compact panels; details live in the tooltips) */
+.detail-container { max-width: 1100px; }
+.cv-head {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 10px;
+}
+.cv-head .back-btn { padding: 6px 12px; cursor: pointer; }
+.cv-champ { width: 48px; height: 48px; border-radius: 8px; border: 2px solid var(--accent); }
+.cv-title h2 { margin: 0; font-size: 1.4rem; color: #fff; line-height: 1.1; }
+.cv-sub { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+.cv-stats { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.cv-stat {
+    display: flex; flex-direction: column; align-items: center; min-width: 58px;
+    padding: 5px 8px; border-radius: 6px; background: rgba(255,255,255,0.04);
+}
+.cv-stat-value { font-family: 'Consolas', monospace; font-weight: bold; font-size: 1rem; color: #fff; }
+.cv-stat-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+
+.cv-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 10px; align-items: start; }
+.cv-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cv-panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+.cv-panel h3 {
+    margin: 0 0 6px 0; font-size: 0.65rem; font-weight: bold; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 1px;
+}
+.cv-panel h3:not(:first-child) { margin-top: 10px; }
+.cv-subhead { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 8px 0 2px; }
+.cv-empty { color: #666; font-size: 0.8rem; }
+
+.cv-row { display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 5px; font-size: 0.8rem; min-height: 30px; }
+.cv-row-name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.cv-spacer { flex: 1 1 auto; }
+.cv-num { font-family: 'Consolas', monospace; font-size: 0.78rem; color: var(--text); white-space: nowrap; min-width: 3.2em; text-align: right; }
+.cv-arrow { color: var(--muted); }
+.cv-icon { width: 32px; height: 32px; border-radius: 4px; border: 1px solid #444; background: #111; }
+.cv-icon-sm { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #444; background: #111; }
+.cv-bar { flex: 0 0 48px; height: 4px; border-radius: 2px; background: #2c2c2c; overflow: hidden; }
+.cv-bar-fill { display: block; height: 100%; background: var(--accent); }
+
+.cv-tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+.cv-tile { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 3px; border-radius: 5px; width: 38px; }
+.cv-tile .cv-bar { flex: none; width: 100%; height: 3px; }
+.cv-tile-share { font-family: 'Consolas', monospace; font-size: 0.72rem; color: var(--text); }
+
+.cv-rune-main { display: flex; align-items: center; gap: 10px; padding: 2px 4px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.cv-rune-main:last-child { border-bottom: none; margin-bottom: 0; }
+.cv-keystone { width: 52px; height: 52px; border-radius: 50%; background: #111; }
+.cv-rune-picks { flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cv-rune-row { display: flex; align-items: center; gap: 4px; }
+.cv-rune { width: 24px; height: 24px; border-radius: 50%; background: #111; }
+.cv-tree { width: 16px; height: 16px; opacity: 0.8; }
+.cv-shards { font-size: 0.68rem; color: var(--muted); }
+.cv-figure { display: flex; flex-direction: column; align-items: flex-end; padding: 4px; border-radius: 5px; }
+.cv-figure-value { font-family: 'Consolas', monospace; font-weight: bold; font-size: 1.2rem; color: #fff; }
+.cv-figure-sub { font-family: 'Consolas', monospace; font-size: 0.72rem; color: var(--muted); }
+
+.cv-skill-label { width: 4.6em; white-space: nowrap; font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.cv-key {
+    width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 4px;
+    font-weight: bold; font-size: 0.8rem; background: #2c2c2c; color: #fff; border: 1px solid #444;
+}
+.cv-key-q { border-color: #3b82f6; }
+.cv-key-w { border-color: #f59e0b; }
+.cv-key-e { border-color: #a855f7; }
+
+.has-tip { cursor: help; outline: none; }
+.has-tip:hover, .has-tip:focus { background: rgba(255,255,255,0.07); }
+img.has-tip:hover, img.has-tip:focus { background: #111; box-shadow: 0 0 0 1px var(--accent); }
+.cv-low { opacity: 0.55; }
+.cv-tip {
+    position: absolute; z-index: 100; display: none; max-width: 300px;
+    background: #0c0c0c; border: 1px solid #444; border-radius: 8px; padding: 9px 11px;
+    font-size: 0.78rem; line-height: 1.4; color: var(--text); box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+    pointer-events: none;
+}
+.cv-tip.show { display: block; }
+.cv-tip-title { font-weight: bold; color: #fff; margin-bottom: 2px; }
+.cv-tip-about { color: #b9a26a; margin-bottom: 5px; }
+.cv-tip-line { color: var(--text); }
+.cv-tip-warn { color: #ff9b00; margin-top: 4px; }
+.cv-tip-note { color: var(--muted); margin-top: 5px; padding-top: 5px; border-top: 1px solid #2c2c2c; }
+
+.cv-more {
+    display: block; width: 100%; padding: 9px; background: transparent; color: var(--muted);
+    border: none; border-top: 1px solid var(--border); cursor: pointer; font-size: 0.8rem;
+}
+.cv-more:hover { color: var(--accent); }
+#table-players tbody tr { cursor: default; }
+#table-players td, #table-players th { padding-top: 7px; padding-bottom: 7px; }
+
+@media (max-width: 900px) { .cv-grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+    #table-players th, #table-players td { padding: 6px 5px; font-size: 0.75rem; }
+    #table-players .player-cell span { max-width: 9.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cv-stats { margin-left: 0; width: 100%; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+    .cv-stat { min-width: 0; padding-left: 2px; padding-right: 2px; }
+}
