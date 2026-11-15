@@ -26,6 +26,7 @@ The run needs the Actions secrets `RIOT_API_KEY` and `MONGODB_URI`; locally they
 - Keep PRs small and focused. No speculative abstractions, no drive-by refactors.
 - Comments explain *why*, never *what*.
 - Conventional Commit messages.
+- Decisions are recorded in `docs/decisions.md`, dated, each with a "Why".
 - Tests never call the Riot API or MongoDB; use recorded or hand-written fixtures.
 
 ## Ask before doing
