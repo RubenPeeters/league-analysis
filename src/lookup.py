@@ -32,7 +32,9 @@ def parse_riot_id(text):
     """The Riot ID as "name#tag", stripped; ValueError when it cannot be one."""
     m = RIOT_ID.fullmatch(text.strip())
     if not m or not m[1].strip() or not m[1].isprintable():
-        raise ValueError("A Riot ID looks like name#tag: 3 to 16 characters, #, 3 to 5 letters or digits.")
+        raise ValueError(
+            "A Riot ID looks like name#tag: 3 to 16 characters, #, 3 to 5 letters or digits."
+        )
     return f"{m[1].strip()}#{m[2]}"
 
 
