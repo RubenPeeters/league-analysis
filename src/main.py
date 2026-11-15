@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import sys
+import threading
 import time
 from collections import Counter
 from datetime import datetime, timezone
@@ -189,8 +190,13 @@ class RiotAuthError(Exception):
     """The Riot API rejected the key (401/403); no later call can succeed."""
 
 
+# Riot requests made by the current thread; each region's crawl runs in its own thread.
+_riot_requests = threading.local()
+
+
 def smart_request(func, *args, **kwargs):
     while True:
+        _riot_requests.count = getattr(_riot_requests, "count", 0) + 1
         try:
             return func(*args, **kwargs)
         except ApiError as e:
@@ -433,200 +439,225 @@ def log_storage_size(matches_col):
 
 
 # --- 6. CRAWLER ---
-def crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count):
-    """Download new ranked solo matches of the top players into matches_col.
+def crawl_region(
+    watcher, riot_watcher, matches_col, old_ids_col, window, player_count, region_code, region_name
+):
+    """Download new ranked solo matches of one region's top players into matches_col.
 
     Each list is scanned newest first and stops at the first match older than the window,
     whose id is recorded in old_ids_col so it is never downloaded again.
-    Return (new matches saved, regions whose scan did not fail). RiotAuthError propagates.
+    Return the Counter of matches listed, stored, downloaded and too old. Errors propagate.
     """
-    new_count = 0
-    regions_ok = 0
 
     def record_old(match_id):
         # seen: the last patch a list returned it, to tell live records from dormant ones.
         old_ids_col.update_one({"_id": match_id}, {"$set": {"seen": window[0]}}, upsert=True)
 
-    for region_code, region_name in REGIONS:
-        logger.info(f"=== Scan: {region_name} ({region_code}) ===")
-        counts = Counter(listed=0, stored=0, downloaded=0, too_old=0)
-        try:
-            # Tiered fallback: Challenger → Grandmaster → Master → Database → Pro Players
-            entries = []
+    logger.info(f"=== Scan: {region_name} ({region_code}) ===")
+    counts = Counter(listed=0, stored=0, downloaded=0, too_old=0)
+    # Tiered fallback: Challenger → Grandmaster → Master → Database → Pro Players
+    entries = []
 
-            # Try Challenger
-            challenger = smart_request(
-                watcher.league.challenger_by_queue, region_code, "RANKED_SOLO_5x5"
-            )
-            if challenger and "entries" in challenger:
-                entries = challenger["entries"]  # type: ignore
-                logger.info(f"Found {len(entries)} Challenger players")
+    # Try Challenger
+    challenger = smart_request(watcher.league.challenger_by_queue, region_code, "RANKED_SOLO_5x5")
+    if challenger and "entries" in challenger:
+        entries = challenger["entries"]  # type: ignore
+        logger.info(f"Found {len(entries)} Challenger players")
 
-            # If not enough, try Grandmaster
-            if len(entries) < player_count:
-                logger.info("Not enough Challenger players, trying Grandmaster...")
-                grandmaster = smart_request(
-                    watcher.league.grandmaster_by_queue, region_code, "RANKED_SOLO_5x5"
-                )
-                if grandmaster and "entries" in grandmaster:
-                    entries.extend(grandmaster["entries"])  # type: ignore
-                    logger.info(f"Added {len(grandmaster['entries'])} Grandmaster players")  # type: ignore
+    # If not enough, try Grandmaster
+    if len(entries) < player_count:
+        logger.info("Not enough Challenger players, trying Grandmaster...")
+        grandmaster = smart_request(
+            watcher.league.grandmaster_by_queue, region_code, "RANKED_SOLO_5x5"
+        )
+        if grandmaster and "entries" in grandmaster:
+            entries.extend(grandmaster["entries"])  # type: ignore
+            logger.info(f"Added {len(grandmaster['entries'])} Grandmaster players")  # type: ignore
 
-            # If still not enough, try Master
-            if len(entries) < player_count:
-                logger.info("Not enough GM players, trying Master...")
-                master = smart_request(
-                    watcher.league.masters_by_queue, region_code, "RANKED_SOLO_5x5"
-                )
-                if master and "entries" in master:
-                    entries.extend(master["entries"])  # type: ignore
-                    logger.info(f"Added {len(master['entries'])} Master players")  # type: ignore
+    # If still not enough, try Master
+    if len(entries) < player_count:
+        logger.info("Not enough GM players, trying Master...")
+        master = smart_request(watcher.league.masters_by_queue, region_code, "RANKED_SOLO_5x5")
+        if master and "entries" in master:
+            entries.extend(master["entries"])  # type: ignore
+            logger.info(f"Added {len(master['entries'])} Master players")  # type: ignore
 
-            # If STILL not enough (early season reset), use database + pro players
-            if len(entries) < player_count:
-                logger.info(
-                    f"Only {len(entries)} ranked players found. "
-                    "Using database + pro player fallback..."
-                )
+    # If STILL not enough (early season reset), use database + pro players
+    if len(entries) < player_count:
+        logger.info(
+            f"Only {len(entries)} ranked players found. Using database + pro player fallback..."
+        )
 
-                # Strategy 1: Get PUUIDs from recent matches in database
-                pipeline = [
-                    {"$match": {"_region": region_code}},
-                    {"$sort": {"info.gameCreation": -1}},
-                    {"$limit": 500},
-                    {"$unwind": "$info.participants"},
-                    {"$group": {"_id": "$info.participants.puuid"}},
-                    {"$limit": player_count},
-                ]
-                fallback_puuids = [doc["_id"] for doc in matches_col.aggregate(pipeline)]
-                logger.info(f"Found {len(fallback_puuids)} players from database")
+        # Strategy 1: Get PUUIDs from recent matches in database
+        pipeline = [
+            {"$match": {"_region": region_code}},
+            {"$sort": {"info.gameCreation": -1}},
+            {"$limit": 500},
+            {"$unwind": "$info.participants"},
+            {"$group": {"_id": "$info.participants.puuid"}},
+            {"$limit": player_count},
+        ]
+        fallback_puuids = [doc["_id"] for doc in matches_col.aggregate(pipeline)]
+        logger.info(f"Found {len(fallback_puuids)} players from database")
 
-                # Strategy 2: If database is also empty, use hardcoded pro players
-                if len(fallback_puuids) < player_count and region_code in FALLBACK_PRO_PLAYERS:
-                    logger.info("Database empty. Looking up pro player PUUIDs from Riot API...")
-                    pro_names = FALLBACK_PRO_PLAYERS[region_code][:player_count]
+        # Strategy 2: If database is also empty, use hardcoded pro players
+        if len(fallback_puuids) < player_count and region_code in FALLBACK_PRO_PLAYERS:
+            logger.info("Database empty. Looking up pro player PUUIDs from Riot API...")
+            pro_names = FALLBACK_PRO_PLAYERS[region_code][:player_count]
 
-                    for riot_id in pro_names:
-                        try:
-                            if "#" not in riot_id:
-                                continue
-                            game_name, tag_line = riot_id.split("#", 1)
-
-                            routing = "asia" if region_code == "kr" else "europe"
-                            account = smart_request(
-                                riot_watcher.account.by_riot_id, routing, game_name, tag_line
-                            )
-                            if account and "puuid" in account:  # type: ignore
-                                fallback_puuids.append(account["puuid"])  # type: ignore
-                                logger.info(f"  Found: {riot_id}")
-                        except RiotAuthError:
-                            raise
-                        except Exception as e:  # noqa: BLE001 - skip this pro, try the next
-                            logger.warning(f"  Could not find {riot_id}: {e}")
-                            continue
-
-                # Add fallback PUUIDs as entries
-                entries.extend([{"puuid": puuid} for puuid in fallback_puuids[:player_count]])
-
-            # Sort by LP and take top player_count
-            entries = sorted(entries, key=lambda x: x.get("leaguePoints", 0), reverse=True)[
-                :player_count
-            ]
-
-            logger.info(f"Tracking {len(entries)} players total")
-
-            for i, entry in enumerate(entries):
+            for riot_id in pro_names:
                 try:
-                    if "puuid" in entry:
-                        puuid = entry["puuid"]
-                    elif "summonerId" in entry:
-                        puuid = smart_request(
-                            watcher.summoner.by_id, region_code, entry["summonerId"]
-                        )["puuid"]
-                    else:
+                    if "#" not in riot_id:
                         continue
+                    game_name, tag_line = riot_id.split("#", 1)
 
-                    match_ids = smart_request(
-                        watcher.match.matchlist_by_puuid,
-                        region_code,
-                        puuid,
-                        count=MATCH_HISTORY_COUNT,
-                        queue=RANKED_SOLO_QUEUE,
+                    routing = "asia" if region_code == "kr" else "europe"
+                    account = smart_request(
+                        riot_watcher.account.by_riot_id, routing, game_name, tag_line
                     )
-                    if not match_ids:
-                        continue
-                    counts["listed"] += len(match_ids)
-
-                    stored = {
-                        d["metadata"]["matchId"]: get_short_version(
-                            d.get("info", {}).get("gameVersion")
-                        )
-                        for d in matches_col.find(
-                            {"metadata.matchId": {"$in": match_ids}},
-                            {"metadata.matchId": 1, "info.gameVersion": 1},
-                        )
-                    }
-                    known_old = {
-                        d["_id"] for d in old_ids_col.find({"_id": {"$in": match_ids}}, {"_id": 1})
-                    }
-
-                    for match_id in match_ids:
-                        if match_id in known_old:
-                            record_old(match_id)
-                            break
-                        if match_id in stored:
-                            # Still stored at a patch change: the purge after the crawl deletes it.
-                            if window and is_older(stored[match_id], window):
-                                record_old(match_id)
-                                counts["too_old"] += 1
-                                break
-                            counts["stored"] += 1
-                            continue
-
-                        # The old script failed here with a NameError when the patch was
-                        # unknown; kept as an explicit error so no behaviour changes (#2).
-                        if not window:
-                            raise RuntimeError("current patch unknown, not saving matches")
-                        match_detail = smart_request(watcher.match.by_id, region_code, match_id)
-                        if not match_detail:
-                            continue
-                        match_ver = get_short_version(
-                            match_detail.get("info", {}).get("gameVersion")
-                        )
-                        if is_older(match_ver, window):
-                            record_old(match_id)
-                            counts["too_old"] += 1
-                            break  # the list is newest first: the rest is older still
-
-                        # Store only essential fields to reduce storage usage
-                        slimmed = slim_match(match_detail, region_code)
-
-                        try:
-                            matches_col.insert_one(slimmed)
-                            new_count += 1
-                            counts["downloaded"] += 1
-                            logger.info(f"  [+] Saved: {match_id}")
-                        except DuplicateKeyError:
-                            pass  # already saved, e.g. by another player's history
-                        except Exception as e:  # noqa: BLE001 - skip this match, keep crawling
-                            logger.error(f"  Could not save {match_id}: {e}")
-
-                    logger.info(f"Player {i + 1}/{player_count} scanned.")
+                    if account and "puuid" in account:  # type: ignore
+                        fallback_puuids.append(account["puuid"])  # type: ignore
+                        logger.info(f"  Found: {riot_id}")
                 except RiotAuthError:
                     raise
-                except Exception as e:  # noqa: BLE001 - one bad player must not stop the crawl
-                    logger.error(f"Player error: {e}")
-            logger.info(
-                f"{region_name}: {counts['listed']} listed, {counts['stored']} already stored, "
-                f"{counts['downloaded']} downloaded, {counts['too_old']} recorded as too old."
+                except Exception as e:  # noqa: BLE001 - skip this pro, try the next
+                    logger.warning(f"  Could not find {riot_id}: {e}")
+                    continue
+
+        # Add fallback PUUIDs as entries
+        entries.extend([{"puuid": puuid} for puuid in fallback_puuids[:player_count]])
+
+    # Sort by LP and take top player_count
+    entries = sorted(entries, key=lambda x: x.get("leaguePoints", 0), reverse=True)[:player_count]
+
+    logger.info(f"Tracking {len(entries)} players total")
+
+    for i, entry in enumerate(entries):
+        try:
+            if "puuid" in entry:
+                puuid = entry["puuid"]
+            elif "summonerId" in entry:
+                puuid = smart_request(watcher.summoner.by_id, region_code, entry["summonerId"])[
+                    "puuid"
+                ]
+            else:
+                continue
+
+            match_ids = smart_request(
+                watcher.match.matchlist_by_puuid,
+                region_code,
+                puuid,
+                count=MATCH_HISTORY_COUNT,
+                queue=RANKED_SOLO_QUEUE,
             )
-            regions_ok += 1
+            if not match_ids:
+                continue
+            counts["listed"] += len(match_ids)
+
+            stored = {
+                d["metadata"]["matchId"]: get_short_version(d.get("info", {}).get("gameVersion"))
+                for d in matches_col.find(
+                    {"metadata.matchId": {"$in": match_ids}},
+                    {"metadata.matchId": 1, "info.gameVersion": 1},
+                )
+            }
+            known_old = {
+                d["_id"] for d in old_ids_col.find({"_id": {"$in": match_ids}}, {"_id": 1})
+            }
+
+            for match_id in match_ids:
+                if match_id in known_old:
+                    record_old(match_id)
+                    break
+                if match_id in stored:
+                    # Still stored at a patch change: the purge after the crawl deletes it.
+                    if window and is_older(stored[match_id], window):
+                        record_old(match_id)
+                        counts["too_old"] += 1
+                        break
+                    counts["stored"] += 1
+                    continue
+
+                # The old script failed here with a NameError when the patch was
+                # unknown; kept as an explicit error so no behaviour changes (#2).
+                if not window:
+                    raise RuntimeError("current patch unknown, not saving matches")
+                match_detail = smart_request(watcher.match.by_id, region_code, match_id)
+                if not match_detail:
+                    continue
+                match_ver = get_short_version(match_detail.get("info", {}).get("gameVersion"))
+                if is_older(match_ver, window):
+                    record_old(match_id)
+                    counts["too_old"] += 1
+                    break  # the list is newest first: the rest is older still
+
+                # Store only essential fields to reduce storage usage
+                slimmed = slim_match(match_detail, region_code)
+
+                try:
+                    matches_col.insert_one(slimmed)
+                    counts["downloaded"] += 1
+                    logger.info(f"  [+] Saved: {match_id}")
+                except DuplicateKeyError:
+                    pass  # already saved, e.g. by another player's history
+                except Exception as e:  # noqa: BLE001 - skip this match, keep crawling
+                    logger.error(f"  Could not save {match_id}: {e}")
+
+            logger.info(f"Player {i + 1}/{player_count} scanned.")
         except RiotAuthError:
             raise
+        except Exception as e:  # noqa: BLE001 - one bad player must not stop the crawl
+            logger.error(f"Player error: {e}")
+    logger.info(
+        f"{region_name}: {counts['listed']} listed, {counts['stored']} already stored, "
+        f"{counts['downloaded']} downloaded, {counts['too_old']} recorded as too old."
+    )
+    return counts
+
+
+def crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count):
+    """Scan every region in REGIONS at the same time, one thread per region.
+
+    Riot rate-limits per routing host, so the regions do not slow each other down.
+    Return {region_code: {"ok", "downloaded", "requests", "seconds"}}. A RiotAuthError in any
+    region is raised once every region has finished; any other region failure is only logged.
+    """
+    results = {}
+
+    def scan(region_code, region_name):
+        _riot_requests.count = 0
+        start = time.monotonic()
+        result = {"ok": False, "downloaded": 0}
+        try:
+            counts = crawl_region(
+                watcher,
+                riot_watcher,
+                matches_col,
+                old_ids_col,
+                window,
+                player_count,
+                region_code,
+                region_name,
+            )
+            result.update(ok=True, downloaded=counts["downloaded"])
+        except RiotAuthError as e:
+            result["auth_error"] = e
         except Exception as e:  # noqa: BLE001 - one bad region must not stop the crawl
             logger.error(f"Region error: {e}")
+        result.update(requests=_riot_requests.count, seconds=time.monotonic() - start)
+        results[region_code] = result
 
-    return new_count, regions_ok
+    # shortcut: the threads share riotwatcher's requests.Session, which works for plain GETs
+    # but is not documented as thread-safe; give each region its own watcher if that bites.
+    threads = [threading.Thread(target=scan, args=r, name=r[0]) for r in REGIONS]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    for r in results.values():
+        if "auth_error" in r:
+            raise r["auth_error"]
+    return results
 
 
 def incomplete_matches(docs, window):
@@ -1078,7 +1109,7 @@ def main():
     log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
     logging.basicConfig(
         level=getattr(logging, log_level_str, logging.INFO),
-        format="%(asctime)s [%(levelname)s] %(message)s",
+        format="%(asctime)s [%(levelname)s] [%(threadName)s] %(message)s",
         datefmt="%H:%M:%S",
     )
 
@@ -1112,9 +1143,8 @@ def main():
     # On failure return before the purge and before writing data.json, so the workflow stops
     # and the published site keeps its last good data.
     try:
-        new_count, regions_ok = crawl(
-            watcher, riot_watcher, matches_col, old_ids_col, window, player_count
-        )
+        results = crawl(watcher, riot_watcher, matches_col, old_ids_col, window, player_count)
+        regions_ok = sum(r["ok"] for r in results.values())
         # The purge after this deletes refreshed matches whose queueId is not 420.
         if window and regions_ok:
             refetch_incomplete(watcher, matches_col, window)
@@ -1153,7 +1183,11 @@ def main():
                 now.strftime("%Y-%m-%d"),
             ),
         )
-    logger.info(f"Complete. New Matches: {new_count}")
+    logger.info(f"Complete. New Matches: {sum(r['downloaded'] for r in results.values())}")
+    for region_code, r in results.items():
+        logger.info(
+            f"{region_code}: {r['requests']} Riot requests, crawl took {r['seconds']:.0f} s."
+        )
     return 0
 
 
