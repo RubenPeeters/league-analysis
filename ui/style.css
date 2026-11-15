@@ -503,3 +503,23 @@ tbody tr a { position: relative; z-index: 2; }
     border: 1px solid #333;
     background: #000;
 }
+/* META OVER PATCHES (history.html) */
+.page-link { display: inline-block; margin-top: 8px; color: var(--accent); font-size: 0.9rem; text-decoration: none; }
+.page-link:hover { text-decoration: underline; }
+#region-nav button { margin: 0; }
+.history-container { max-width: 1400px; margin: 0 auto; }
+.history-note { color: var(--muted); font-size: 0.85rem; line-height: 1.5; padding: 10px 15px; margin: 0; }
+.history-scroll { overflow-x: auto; }
+#history-grid { width: auto; min-width: 100%; }
+#history-grid th, #history-grid td { padding: 6px 8px; text-align: center; white-space: nowrap; }
+#history-grid tbody tr { cursor: default; }
+.patch-games { display: block; font-weight: normal; text-transform: none; }
+/* Keeps the champion visible while the patches scroll sideways on a phone. */
+.champ-col { position: sticky; left: 0; z-index: 1; background: var(--card); text-align: left !important; }
+.heat { color: #fff; text-shadow: 0 0 3px #000; cursor: pointer; border-left: 1px solid var(--border); }
+.heat.empty { cursor: default; }
+.summary-grid { margin-top: 25px; }
+.summary-box ul { list-style: none; padding: 10px 15px; margin: 0; columns: 2; }
+.summary-box li { display: flex; align-items: center; gap: 8px; padding: 3px 0; break-inside: avoid; }
+.summary-box p { padding: 0 15px; }
+.patch-label { color: var(--muted); font-family: 'Consolas', monospace; min-width: 3em; }
